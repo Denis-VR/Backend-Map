@@ -1,0 +1,242 @@
+{
+  "id": "nosql",
+  "title": "NoSQL",
+  "color": "#f2cf3a",
+  "level": 2,
+  "description": "",
+  "nodes": [
+    {
+      "id": "nosql.redis",
+      "title": "Redis",
+      "abbr": "Rds",
+      "level": 2,
+      "description": "Кэш, структуры данных, персистентность, кластеры.",
+      "requires": [
+        "db.sql"
+      ],
+      "questions": [
+        {
+          "q": "Как реализована устойчивость данных в Redis?",
+          "level": 3
+        },
+        {
+          "q": "Как реализовать кластеризацию и масштабирование Redis?",
+          "level": 3
+        },
+        {
+          "q": "Какие есть способы обеспечения высокой доступности Redis?",
+          "level": 3
+        },
+        {
+          "q": "Какие преимущества и недостатки у Redis?",
+          "level": 2
+        },
+        {
+          "q": "Аннотации redis в Java и Spring?",
+          "level": 2
+        },
+        {
+          "q": "В каких случаях Redis не является оптимальным выбором?",
+          "level": 2
+        },
+        {
+          "q": "Расскажите про распределенные кэши в redis?",
+          "level": 2
+        },
+        {
+          "q": "Как работает механизм транзакций в Redis?",
+          "level": 2
+        }
+      ]
+    },
+    {
+      "id": "nosql.cassandra",
+      "title": "Cassandra",
+      "abbr": "Cas",
+      "level": 2,
+      "description": "Wide-column, keyspace, уровни согласованности.",
+      "requires": [
+        "nosql.mongo",
+        "algo.distributed"
+      ],
+      "questions": [
+        {
+          "q": "Как масштабируется Cassandra?",
+          "level": 3
+        },
+        {
+          "q": "Как распределяются данные по нодам в кластере Cassandra?",
+          "level": 3
+        },
+        {
+          "q": "Как обеспечивается высокая доступность и отказоустойчивость в Cassandra?",
+          "level": 3
+        },
+        {
+          "q": "Преимущества и недостатки Cassandra?",
+          "level": 2
+        },
+        {
+          "q": "Что такое keyspace и column family в Cassandra?",
+          "level": 2
+        },
+        {
+          "q": "Какие уровни согласованности поддерживает Cassandra?",
+          "level": 2
+        },
+        {
+          "q": "Какие best practices по моделированию данных в Cassandra?",
+          "level": 2
+        }
+      ]
+    },
+    {
+      "id": "nosql.clickhouse",
+      "title": "ClickHouse",
+      "abbr": "CH",
+      "level": 2,
+      "description": "Колоночная аналитика, MergeTree и его варианты.",
+      "requires": [
+        "db.optimization"
+      ],
+      "questions": [
+        {
+          "q": "Какую нагрузку способен выдержать?",
+          "level": 3
+        },
+        {
+          "q": "Что такое MergeTree, и в чем разница с ReplacingMergeTree и SummingMergeTree?",
+          "level": 3
+        },
+        {
+          "q": "Как проектировать распределённые таблицы с использованием шардов и реплик?",
+          "level": 3
+        },
+        {
+          "q": "Какие шаги предпринимать для оптимизации медленных запросов на миллиардах строк?",
+          "level": 3
+        },
+        {
+          "q": "Как реализовать масштабирование и отказоустойчивость ClickHouse?",
+          "level": 3
+        },
+        {
+          "q": "Что такое ClickHouse и для каких задач он оптимизирован?",
+          "level": 2
+        },
+        {
+          "q": "В каких случаях не является оптимальным выбором?",
+          "level": 2
+        }
+      ]
+    },
+    {
+      "id": "nosql.mongo",
+      "title": "MongoDB",
+      "abbr": "Mgo",
+      "level": 2,
+      "description": "Документная модель, индексы, шардирование, репликация.",
+      "requires": [
+        "db.indexes"
+      ],
+      "questions": [
+        {
+          "q": "Как работает механизм транзакций и блокировок в MongoDB?",
+          "level": 3
+        },
+        {
+          "q": "Как машстабируется MondoDB?",
+          "level": 3
+        },
+        {
+          "q": "Что такое шардирование и как оно работает в MongoDB?",
+          "level": 3
+        },
+        {
+          "q": "Как обеспечивается репликация и высокая доступность в MongoDB?",
+          "level": 3
+        },
+        {
+          "q": "Какие существуют индексы и как они влияют на производительность в MongoDB?",
+          "level": 3
+        },
+        {
+          "q": "Как использовать профайлер для анализа производительности запросов в MongoDB?",
+          "level": 3
+        },
+        {
+          "q": "Как мониторить и оптимизировать работу MongoDB?",
+          "level": 3
+        },
+        {
+          "q": "Какие основные преимущества MongoDB перед реляционными СУБД?",
+          "level": 2
+        },
+        {
+          "q": "В каких случаях MongoDB не является оптимальным выбором?",
+          "level": 2
+        },
+        {
+          "q": "Какие типы данных поддерживает MongoDB?",
+          "level": 2
+        }
+      ]
+    },
+    {
+      "id": "nosql.elastic",
+      "title": "ElasticSearch",
+      "abbr": "ES",
+      "level": 2,
+      "description": "Полнотекстовый поиск, анализаторы, шарды и реплики.",
+      "requires": [
+        "nosql.mongo"
+      ],
+      "questions": [
+        {
+          "q": "Виды Analyzers в Elasticsearch?",
+          "level": 3
+        },
+        {
+          "q": "Концепцию шардирования (shards) и реплик (replicas) в Elasticsearch?",
+          "level": 3
+        },
+        {
+          "q": "Способы масштабирования в Elasticsearch?",
+          "level": 3
+        },
+        {
+          "q": "Способы оптимизации производительности в Elasticsearch?",
+          "level": 3
+        },
+        {
+          "q": "Устройство кластера и взаимодействие между нодами в Elasticsearch?",
+          "level": 3
+        },
+        {
+          "q": "Назначение Elasticsearch?",
+          "level": 2
+        },
+        {
+          "q": "Индексы в Elasticsearch?",
+          "level": 2
+        },
+        {
+          "q": "Разница между mapping и schema в Elasticsearch?",
+          "level": 2
+        },
+        {
+          "q": "Как происходит полнотекстовый поиск в Elasticsearch?",
+          "level": 2
+        },
+        {
+          "q": "Разница между запросами match и term в Elasticsearch?",
+          "level": 2
+        },
+        {
+          "q": "Как работает Query DSL в Elasticsearch и для чего он нужен?",
+          "level": 2
+        }
+      ]
+    }
+  ]
+}

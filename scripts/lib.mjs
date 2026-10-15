@@ -23,13 +23,14 @@ export function loadProject(id) {
   return project;
 }
 
-// A question is a string, {q, a} or a topic {topic, items: [...]} whose items are questions again.
+// A question is a string, {q, a, level, important} or a topic {topic, items: [...]} whose items are questions again.
 function checkQuestions(list, fail, depth = 0) {
   if (!Array.isArray(list)) { fail('questions must be an array'); return; }
   for (const q of list) {
+    if (q && typeof q === 'object' && 'level' in q && ![1, 2, 3, 4].includes(q.level)) fail(`"${q.q || q.topic}": level must be 1, 2, 3 or 4`);
     if (typeof q === 'string' || (q && typeof q.q === 'string')) continue;
     if (q && typeof q.topic === 'string') {
-      if (depth > 4) fail(`topic "${q.topic}" is nested too deep`);
+      if (depth > 6) fail(`topic "${q.topic}" is nested too deep`);
       checkQuestions(q.items || [], fail, depth + 1);
       continue;
     }

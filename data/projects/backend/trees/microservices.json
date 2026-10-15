@@ -1,0 +1,228 @@
+{
+  "id": "microservices",
+  "title": "Microservices",
+  "color": "#f2cf3a",
+  "level": 2,
+  "description": "",
+  "nodes": [
+    {
+      "id": "obs.tracing",
+      "title": "Zipkin",
+      "abbr": "Trace",
+      "level": 3,
+      "description": "Zipkin, OpenTelemetry, distributed tracing.",
+      "requires": [
+        "obs.logging",
+        "arch.microservices"
+      ],
+      "questions": [
+        {
+          "q": "Как работают идентификаторы корреляции?",
+          "level": 3
+        },
+        {
+          "q": "Как подключить и настроить Sleuth?",
+          "level": 3
+        },
+        {
+          "q": "Особенности трассировки",
+          "level": 3
+        },
+        {
+          "q": "Как настроить Logback?",
+          "level": 3
+        },
+        {
+          "q": "Добавление id корреляции в HTTP-ответ с помощью Gateway",
+          "level": 3
+        },
+        {
+          "q": "Распределенная трассировка с Zipkin",
+          "level": 3
+        },
+        {
+          "q": "Настрофка уровней трассировки",
+          "level": 3
+        },
+        {
+          "q": "Трассировка транзакция",
+          "level": 3
+        },
+        {
+          "q": "Трассировка операций обмена сообщениями",
+          "level": 3
+        }
+      ]
+    },
+    {
+      "id": "microservices.keycloak",
+      "title": "Keycloak",
+      "abbr": "Key",
+      "level": 3,
+      "description": "",
+      "questions": [
+        {
+          "q": "Как настроить?",
+          "level": 3
+        },
+        {
+          "q": "Как сделать аутентификацию?",
+          "level": 3
+        }
+      ]
+    },
+    {
+      "id": "microservices.resilience4j",
+      "title": "Resilience4j",
+      "abbr": "Res",
+      "level": 3,
+      "description": "",
+      "questions": [
+        {
+          "q": "Резервная реализация",
+          "level": 3
+        },
+        {
+          "q": "Герметичные отсеки",
+          "level": 3
+        },
+        {
+          "q": "Повторные попытки",
+          "level": 3
+        },
+        {
+          "q": "Ограничитель частоты",
+          "level": 3
+        },
+        {
+          "q": "ThreadLocal",
+          "level": 3
+        }
+      ]
+    },
+    {
+      "id": "arch.discovery",
+      "title": "Gateway",
+      "abbr": "GW",
+      "level": 2,
+      "description": "API Gateway, service discovery, Feign-клиенты.",
+      "requires": [
+        "arch.microservices"
+      ],
+      "questions": [
+        {
+          "q": "Как настроить для Eureka?",
+          "level": 2
+        },
+        {
+          "q": "Способы отображения маршрутов",
+          "level": 2
+        },
+        {
+          "q": "Динамическая загрузка настроек маршрутизации",
+          "level": 3
+        },
+        {
+          "q": "Факбрики фильтров",
+          "level": 3
+        },
+        {
+          "q": "Добавление своих фильтров",
+          "level": 3
+        },
+        {
+          "q": "Идентификаторы корреляции в службах",
+          "level": 3
+        }
+      ]
+    },
+    {
+      "id": "microservices.discovery-client",
+      "title": "Discovery Client",
+      "abbr": "DC",
+      "level": 2,
+      "description": "",
+      "questions": [
+        {
+          "q": "Устройство",
+          "level": 2
+        },
+        {
+          "q": "Как настроить?",
+          "level": 2
+        }
+      ]
+    },
+    {
+      "id": "microservices.feingclient",
+      "title": "FeingClient",
+      "abbr": "Fei",
+      "level": 2,
+      "description": "",
+      "questions": [
+        {
+          "q": "Как настроить?",
+          "level": 2
+        },
+        {
+          "q": "Load Balancing",
+          "level": 2
+        }
+      ]
+    },
+    {
+      "id": "microservices.istorii",
+      "title": "Истории",
+      "abbr": "Ист",
+      "level": 2,
+      "description": "",
+      "questions": [
+        {
+          "q": "История одного падения",
+          "level": 2
+        },
+        {
+          "q": "Хороший ретрай, плохой ретрая",
+          "level": 2
+        }
+      ]
+    },
+    {
+      "id": "arch.microservices",
+      "title": "Core",
+      "abbr": "MSA",
+      "level": 2,
+      "description": "Плюсы и минусы, разбиение на сервисы, истории падений.",
+      "requires": [
+        "arch.principles",
+        "ops.docker"
+      ],
+      "questions": [
+        {
+          "q": "Отличия от монолитов",
+          "level": 2
+        },
+        {
+          "q": "Что такое облачная инфраструктура?",
+          "level": 2
+        },
+        {
+          "q": "Отказоусточивость, Масштабирование, Избыточность",
+          "level": 2
+        },
+        {
+          "q": "CAP-теорема",
+          "level": 2
+        },
+        {
+          "q": "Какие еспособы сбора метрик?",
+          "level": 2
+        },
+        {
+          "q": "Как настроить SSL?",
+          "level": 2
+        }
+      ]
+    }
+  ]
+}

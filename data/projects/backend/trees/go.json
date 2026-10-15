@@ -1,40 +1,40 @@
 {
   "id": "go",
   "title": "Go",
-  "color": "#39c5cf",
-  "description": "Твоя текущая цель: от синтаксиса до runtime и продакшн-сервисов.",
+  "color": "#2ea8e6",
+  "description": "",
   "nodes": [
     {
-      "id": "go.basics",
-      "title": "Основы Go",
-      "abbr": "Go",
-      "description": "Синтаксис, типы, функции, указатели, стек и куча.",
-      "keystone": true,
-      "questions": [
-        "Как работает sheduler?",
-        "Где лоцируется Stack?",
-        "Stack и Heap?",
-        "Что такое вытесняющая и кооперативная задача?",
-        "Что такое интерфейсы?",
-        "Принцыпы ООП?",
-        "Как в го создать инверсию зависимостей? (uberX)",
-        "Чем отличаются var, := и const?",
-        "Как работают указатели в Go?"
+      "id": "go.goroutines",
+      "title": "Concurency",
+      "abbr": "Chan",
+      "description": "Горутины, буферизованные и небуферизованные каналы, select.",
+      "requires": [
+        "go.structures"
       ],
-      "resources": [
+      "questions": [
+        "Что такое горутины и каналы?",
+        "Race Condition?",
+        "Deadlock?",
+        "Что если записать сообщение в закрытый канал?",
+        "Что такое легковесные горутины и чем отличаются от системных тредов?",
+        "Что такое context switch?",
+        "Как работает select?",
+        "Как работает закрытие канала?",
+        "Что такое атомики?",
         {
-          "title": "A Tour of Go",
-          "url": "https://go.dev/tour/"
-        },
-        {
-          "title": "Effective Go",
-          "url": "https://go.dev/doc/effective_go"
+          "topic": "Sync библиотека",
+          "items": [
+            "Что такое мьютекс?",
+            "Что такое rvмьютекс?",
+            "Что такое SyncMap?"
+          ]
         }
       ]
     },
     {
       "id": "go.structures",
-      "title": "Слайсы, мапы, структуры",
+      "title": "Structures",
       "abbr": "Map",
       "description": "Как устроены slice и map внутри, len/cap, append, бакеты.",
       "requires": [
@@ -42,8 +42,53 @@
       ],
       "questions": [
         {
-          "q": "Базовые типы Go: какие есть и сколько весят?",
-          "a": "Bolean (Сколько весит?); Numeric (Целые (Знаковые (int8 = byte; int16; int32 = rune; int64); Беззнаковые (unit8; unit16; unit32; unit64)); Дробные (float32; float64; complex64; complex128)); String"
+          "topic": "Core",
+          "items": [
+            {
+              "topic": "Bolean",
+              "items": [
+                "Сколько весит?"
+              ]
+            },
+            {
+              "topic": "Numeric",
+              "items": [
+                {
+                  "topic": "Целые",
+                  "items": [
+                    {
+                      "topic": "Знаковые",
+                      "items": [
+                        "int8 = byte",
+                        "int16",
+                        "int32 = rune",
+                        "int64"
+                      ]
+                    },
+                    {
+                      "topic": "Беззнаковые",
+                      "items": [
+                        "unit8",
+                        "unit16",
+                        "unit32",
+                        "unit64"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "topic": "Дробные",
+                  "items": [
+                    "float32",
+                    "float64",
+                    "complex64",
+                    "complex128"
+                  ]
+                }
+              ]
+            },
+            "String"
+          ]
         },
         {
           "topic": "Map",
@@ -72,239 +117,28 @@
       ]
     },
     {
-      "id": "go.errors",
-      "title": "Ошибки, defer, panic",
-      "abbr": "Err",
-      "description": "error как значение, wrapping, errors.Is/As, defer, panic/recover.",
-      "requires": [
-        "go.basics"
-      ],
+      "id": "go.basics",
+      "title": "Core",
+      "abbr": "Go",
+      "description": "Синтаксис, типы, функции, указатели, стек и куча.",
       "questions": [
-        "Почему в Go ошибки — это значения?",
-        "Как работают errors.Is и errors.As?",
-        "Как обернуть ошибку через %w?",
-        "В каком порядке выполняются defer?",
-        "Когда уместен panic и как работает recover?"
-      ]
-    },
-    {
-      "id": "go.modules",
-      "title": "Модули и тулинг",
-      "abbr": "Mod",
-      "description": "go mod, workspace, go vet, golangci-lint, структура проекта.",
-      "requires": [
-        "go.basics"
+        "Как работает sheduler?",
+        "Где лоцируется Stack?",
+        "Stack и Heap?",
+        "Что такое вытесняющая и кооперативная задача?",
+        "Что такое интерфейсы?",
+        "Принцыпы ООП?",
+        "Как в го создать инверсию зависимостей? (uberX)"
       ],
-      "questions": [
-        "Что хранится в go.mod и go.sum?",
-        "Как работает Minimal Version Selection?",
-        "Зачем нужна директория internal?",
-        "Какие линтеры стоит подключить?"
-      ]
-    },
-    {
-      "id": "go.interfaces",
-      "title": "Интерфейсы и методы",
-      "abbr": "Ifc",
-      "description": "Неявная реализация, value и pointer receivers, embedding, пустой интерфейс.",
-      "requires": [
-        "go.structures"
-      ],
-      "keystone": true,
-      "questions": [
-        "Как Go проверяет реализацию интерфейса?",
-        "Чем отличаются value receiver и pointer receiver?",
-        "Почему интерфейс с nil-значением не равен nil?",
-        "Что такое embedding и чем он отличается от наследования?",
-        "Как сделать type switch?"
-      ]
-    },
-    {
-      "id": "go.generics",
-      "title": "Дженерики",
-      "abbr": "[T]",
-      "description": "Type parameters, constraints, когда дженерики не нужны.",
-      "requires": [
-        "go.interfaces"
-      ],
-      "questions": [
-        "Как объявить функцию с type parameter?",
-        "Что такое constraint и comparable?",
-        "Чем дженерики в Go отличаются от Java?"
-      ]
-    },
-    {
-      "id": "go.goroutines",
-      "title": "Горутины и каналы",
-      "abbr": "Chan",
-      "description": "Горутины, буферизованные и небуферизованные каналы, select.",
-      "requires": [
-        "go.structures",
-        "go.errors"
-      ],
-      "keystone": true,
-      "questions": [
-        "Что такое горутины и каналы?",
-        "Race Condition?",
-        "Deadlock?",
-        "Что если записать сообщение в закрытый канал?",
-        "Что такое легковесные горутины и чем отличаются от системных тредов?",
-        "Что такое context switch?",
-        "Как работает select?",
-        "Как работает закрытие канала?",
-        "Что такое атомики?",
+      "resources": [
         {
-          "topic": "Sync библиотека",
-          "items": [
-            "Что такое мьютекс?",
-            "Что такое rvмьютекс?",
-            "Что такое SyncMap?"
-          ]
+          "title": "A Tour of Go",
+          "url": "https://go.dev/tour/"
+        },
+        {
+          "title": "Effective Go",
+          "url": "https://go.dev/doc/effective_go"
         }
-      ]
-    },
-    {
-      "id": "go.sync",
-      "title": "sync и атомики",
-      "abbr": "Sync",
-      "description": "Mutex, RWMutex, WaitGroup, Once, sync.Map, atomic, errgroup.",
-      "requires": [
-        "go.goroutines"
-      ],
-      "questions": [
-        "Когда использовать мьютекс, а когда канал?",
-        "Как работает sync.WaitGroup?",
-        "Что делает sync.Once?",
-        "Как найти гонку с помощью -race?",
-        "Что даёт errgroup?"
-      ]
-    },
-    {
-      "id": "go.context",
-      "title": "context",
-      "abbr": "Ctx",
-      "description": "Отмена, дедлайны, таймауты и значения в контексте.",
-      "requires": [
-        "go.goroutines"
-      ],
-      "questions": [
-        "Зачем нужен context.Context?",
-        "Чем WithCancel отличается от WithTimeout?",
-        "Почему контекст передают первым аргументом?",
-        "Что можно и что не стоит класть в context.WithValue?"
-      ]
-    },
-    {
-      "id": "go.testing",
-      "title": "Тестирование в Go",
-      "abbr": "Test",
-      "description": "testing, table-driven тесты, моки, бенчмарки, fuzzing.",
-      "requires": [
-        "go.interfaces",
-        "go.errors",
-        "test.basics"
-      ],
-      "questions": [
-        "Как писать table-driven тесты?",
-        "Как замокать зависимость через интерфейс?",
-        "Как написать бенчмарк?",
-        "Что такое fuzz-тесты в Go?"
-      ]
-    },
-    {
-      "id": "go.http",
-      "title": "net/http и REST",
-      "abbr": "HTTP",
-      "description": "HTTP-сервер и клиент, роутинг, middleware, graceful shutdown.",
-      "requires": [
-        "go.interfaces",
-        "go.context",
-        "net.rest"
-      ],
-      "questions": [
-        "Как устроен http.Handler?",
-        "Как написать middleware?",
-        "Как сделать graceful shutdown?",
-        "Почему нужно закрывать resp.Body?",
-        "Какие таймауты стоит выставить серверу и клиенту?"
-      ]
-    },
-    {
-      "id": "go.db",
-      "title": "Go и базы данных",
-      "abbr": "pgx",
-      "description": "database/sql, pgx, sqlc, пул соединений, транзакции.",
-      "requires": [
-        "go.context",
-        "db.sql"
-      ],
-      "questions": [
-        "Как работает пул соединений в database/sql?",
-        "Чем pgx отличается от database/sql?",
-        "Как правильно работать с транзакциями?",
-        "Что такое sqlc?"
-      ]
-    },
-    {
-      "id": "go.runtime",
-      "title": "Runtime и GC",
-      "abbr": "GMP",
-      "description": "Планировщик GMP, escape analysis, сборщик мусора, память.",
-      "requires": [
-        "go.sync"
-      ],
-      "keystone": true,
-      "questions": [
-        "Как работает планировщик GMP?",
-        "Что такое escape analysis?",
-        "Как устроен сборщик мусора в Go?",
-        "Что делает GOMAXPROCS?",
-        "Что такое GOGC и GOMEMLIMIT?"
-      ]
-    },
-    {
-      "id": "go.profiling",
-      "title": "pprof и оптимизация",
-      "abbr": "pprof",
-      "description": "pprof, trace, бенчмарки, аллокации.",
-      "requires": [
-        "go.runtime",
-        "go.testing"
-      ],
-      "questions": [
-        "Как снять CPU-профиль через pprof?",
-        "Как найти лишние аллокации?",
-        "Что показывает go tool trace?"
-      ]
-    },
-    {
-      "id": "go.grpc",
-      "title": "gRPC в Go",
-      "abbr": "gRPC",
-      "description": "protoc, сервер и клиент, интерсепторы, стриминг.",
-      "requires": [
-        "go.http",
-        "net.grpc"
-      ],
-      "questions": [
-        "Как сгенерировать код из .proto?",
-        "Что такое интерсепторы в gRPC?",
-        "Как передавать дедлайны в gRPC?"
-      ]
-    },
-    {
-      "id": "go.kafka",
-      "title": "Go и брокеры",
-      "abbr": "Pub",
-      "description": "Kafka-клиенты в Go, consumer groups, идемпотентная обработка.",
-      "requires": [
-        "go.goroutines",
-        "mq.kafka"
-      ],
-      "questions": [
-        "Какие Kafka-клиенты есть для Go?",
-        "Как обеспечить идемпотентную обработку сообщений?",
-        "Как обрабатывать сообщения параллельно, сохраняя порядок?"
       ]
     }
   ]

@@ -1,0 +1,92 @@
+{
+  "id": "camunda-bpmn",
+  "title": "Camunda BPMN",
+  "color": "#c37ad3",
+  "level": 4,
+  "description": "",
+  "nodes": [
+    {
+      "id": "camunda-bpmn.core",
+      "title": "Core",
+      "abbr": "Core",
+      "level": 4,
+      "description": "",
+      "questions": [
+        {
+          "q": "Назначение BPMN?",
+          "level": 4
+        },
+        {
+          "q": "задачи, события, шлюзы, пулы, дорожки, потоки, артефакты в Camunda BPMN?",
+          "level": 4
+        },
+        {
+          "q": "Отличие Task от Subprocess в Camunda?",
+          "level": 4
+        },
+        {
+          "q": "Типы событий в bpmn?",
+          "level": 4
+        },
+        {
+          "q": "Элементы bpmn диаграм?",
+          "level": 4
+        }
+      ]
+    },
+    {
+      "id": "arch.camunda",
+      "title": "Компоненты Camunda",
+      "abbr": "BPMN",
+      "level": 4,
+      "description": "BPMN-процессы, компоненты Camunda, интеграция со Spring.",
+      "requires": [
+        "arch.integration",
+        "spring.core"
+      ],
+      "questions": [
+        {
+          "q": "Modeler в Camunda?",
+          "level": 4
+        },
+        {
+          "q": "Engine в Camunda?",
+          "level": 4
+        },
+        {
+          "q": "Cockpit в Camunda?",
+          "level": 4
+        },
+        {
+          "q": "Tasklist в Camunda?",
+          "level": 4
+        },
+        {
+          "q": "Optimize в Camunda?",
+          "level": 4
+        },
+        {
+          "q": "Admin в Camunda?",
+          "level": 4
+        }
+      ]
+    },
+    {
+      "id": "camunda-bpmn.integraciya-spring",
+      "title": "Интеграция Spring",
+      "abbr": "ИS",
+      "level": 4,
+      "description": "",
+      "questions": [
+        {
+          "q": "Таски в Camunda?",
+          "level": 4
+        },
+        {
+          "q": "Делегаты в Camunda?",
+          "level": 4
+        }
+      ]
+    }
+  ]
+}

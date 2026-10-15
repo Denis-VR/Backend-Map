@@ -1,0 +1,132 @@
+{
+  "id": "hibernate",
+  "title": "Hibernate",
+  "color": "#7fd492",
+  "level": 1,
+  "description": "",
+  "nodes": [
+    {
+      "id": "db.hibernate",
+      "title": "Core",
+      "abbr": "JPA",
+      "level": 1,
+      "description": "Сущности, жизненный цикл, кэши, N+1, ленивые связи.",
+      "requires": [
+        "db.sql",
+        "java.collections"
+      ],
+      "questions": [
+        {
+          "q": "Что такое проблема n+1 и какие решения (@EntityGraph)?",
+          "level": 1,
+          "important": true
+        },
+        {
+          "q": "Какие уровни кэшей в Hibernate?",
+          "level": 1,
+          "important": true
+        },
+        {
+          "q": "Что такое ORM?",
+          "level": 1
+        },
+        {
+          "q": "Как использовать FetchType?",
+          "level": 1
+        },
+        {
+          "q": "Как сессии Hibernate управляют состоянием объектов?",
+          "level": 1
+        },
+        {
+          "q": "Какой жизненный цикл Entity?",
+          "level": 1
+        },
+        {
+          "q": "Зачем нужен Transient в Hibernate?",
+          "level": 1
+        },
+        {
+          "q": "Что такое Detached состояние в Hibernate?",
+          "level": 2
+        },
+        {
+          "q": "Опишите случай перехода в persistense состояние объекта?",
+          "level": 2
+        },
+        {
+          "q": "Способ вернуть отсоединенный объект в постоянное состояние?",
+          "level": 2
+        },
+        {
+          "q": "Зачем нуежн Criteria API?",
+          "level": 2
+        },
+        {
+          "q": "Что такое триггеры в реляционной БД",
+          "level": 2
+        }
+      ]
+    },
+    {
+      "id": "db.locks",
+      "title": "Optimistic/Pesimistick Locks",
+      "abbr": "Lock",
+      "level": 1,
+      "description": "Оптимистичные и пессимистичные блокировки, SELECT FOR UPDATE.",
+      "requires": [
+        "db.transactions",
+        "db.hibernate"
+      ],
+      "questions": [
+        {
+          "q": "Как работают писсемистические и оптимистические блокировки в Hibernate?",
+          "level": 1,
+          "important": true
+        },
+        {
+          "q": "Как настроить блокировки в hibernate?",
+          "level": 1
+        },
+        {
+          "q": "Какие виды и цели запросов SELECT FOR в Hibernate?",
+          "level": 1
+        }
+      ]
+    },
+    {
+      "id": "db.transactions",
+      "title": "Изоляция транзакций",
+      "abbr": "ACID",
+      "level": 1,
+      "description": "ACID, уровни изоляции, аномалии, @Transactional.",
+      "requires": [
+        "db.sql"
+      ],
+      "questions": [
+        {
+          "q": "Что такое ACID?",
+          "level": 1,
+          "important": true
+        },
+        {
+          "q": "Какие есть уровни изоляций транзакций?",
+          "level": 1
+        },
+        {
+          "q": "Как настроить изоляцию в Hibernate и SQL?",
+          "level": 1
+        },
+        {
+          "q": "Какие есть параметры @Transactional?",
+          "level": 1,
+          "important": true
+        },
+        {
+          "q": "Что акое Propagation в Hibernate?",
+          "level": 1
+        }
+      ]
+    }
+  ]
+}

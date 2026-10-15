@@ -1,4 +1,5 @@
-/* GameTree: a global skill tree with XMind-style editing and a mind map inside every skill.
+/* GameTree: a skill map laid out like an XMind timeline. Topics sit on one line, sections branch off
+ * every topic, questions branch off every section. A mind map opens inside every section.
  * Data: window.GAMETREE_PROJECTS (bundled by scripts/build.mjs).
  * Persistence: localStorage, plus the artifact `db` capability when the page runs on claude.ai. */
 (function () {
@@ -16,7 +17,10 @@
   const BUILTIN = Array.isArray(window.GAMETREE_PROJECTS) ? window.GAMETREE_PROJECTS : [];
   const reduceMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const isNarrow = () => window.innerWidth <= 640;
-  const PALETTE = ['#39c5cf', '#e0a458', '#9b8cf2', '#7fc79a', '#e06c61', '#5aa9e6', '#d9b36c', '#e47fb0', '#8fb3a0', '#c792ea'];
+  const PALETTE = ['#7fd492', '#f2cf3a', '#ff7a1a', '#c37ad3', '#2ea8e6', '#39c5cf', '#e06c61', '#e47fb0'];
+  // Question difficulty, the same colors as in the XMind map.
+  const LEVELS = { 1: { name: 'Базовый', c: '#7fd492' }, 2: { name: 'Средний', c: '#f2cf3a' }, 3: { name: 'Сложный', c: '#ff7a1a' }, 4: { name: 'Эксперт', c: '#c37ad3' } };
+  const levelColor = l => (LEVELS[l] ? LEVELS[l].c : null);
 
   const TRANSLIT = { а: 'a', б: 'b', в: 'v', г: 'g', д: 'd', е: 'e', ё: 'e', ж: 'zh', з: 'z', и: 'i', й: 'y', к: 'k', л: 'l', м: 'm', н: 'n', о: 'o', п: 'p', р: 'r', с: 's', т: 't', у: 'u', ф: 'f', х: 'h', ц: 'c', ч: 'ch', ш: 'sh', щ: 'sch', ы: 'y', э: 'e', ю: 'yu', я: 'ya' };
   function slug(s) {
@@ -24,18 +28,26 @@
       .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 32) || 'item';
   }
 
-  // Questions: a string, {q, a}, or a topic {topic, items: [...]} that nests further.
+  // Questions: a string, {q, a, level, important}, or a topic {topic, items: [...]} that nests further.
   const isTopic = q => !!q && typeof q === 'object' && typeof q.topic === 'string';
   const qText = q => (typeof q === 'string' ? q : (isTopic(q) ? q.topic : q.q));
   const qAns = q => (typeof q === 'string' || isTopic(q) ? '' : (q.a || ''));
-  function flatQ(list, path = [], group = []) {
+  const qLevel = q => (q && typeof q === 'object' && LEVELS[q.level] ? q.level : null);
+  const qImp = q => !!(q && typeof q === 'object' && q.important);
+  function flatQ(list, path = [], group = [], lvl = null, imp = false) {
     const out = [];
     (list || []).forEach((q, i) => {
-      if (isTopic(q)) out.push(...flatQ(q.items, [...path, i], [...group, q.topic]));
-      else if (q) out.push({ q: qText(q), a: qAns(q), path: [...path, i], group: group.join(' / ') });
+      if (isTopic(q)) out.push(...flatQ(q.items, [...path, i], [...group, q.topic], qLevel(q) || lvl, imp || qImp(q)));
+      else if (q) out.push({ q: qText(q), a: qAns(q), path: [...path, i], group: group.join(' / '), level: qLevel(q) || lvl, important: qImp(q) || imp });
     });
     return out;
   }
+  // a question object with only its text left goes back to a plain string
+  function tidyQ(o) {
+    for (const k of ['a', 'level', 'important']) if (!o[k]) delete o[k];
+    return Object.keys(o).length === 1 && 'q' in o ? o.q : o;
+  }
+  const asObj = e => (typeof e === 'string' ? { q: e } : e);
 
   function autoAbbr(title) {
     const t = String(title || '').trim();
@@ -47,7 +59,6 @@
     return words.slice(0, 3).map(w => w[0].toUpperCase()).join('');
   }
   const abbrOf = n => (n.abbr ? String(n.abbr) : autoAbbr(n.title)).slice(0, 5);
-  const abbrSize = s => ({ 1: 15, 2: 14, 3: 12.5, 4: 11, 5: 9.5 }[s.length] || 9.5);
 
   // ------------------------------------------------------------------ storage
   // Every value is stored as {at, v}. Local copy always; remote (artifact db) when available, newest wins.
@@ -91,23 +102,26 @@
     pid: null,
     progress: null,       // {nodes:{id:{s,t,rv,known:[], notes}}, reviews:{}}
     prefs: {},
-    idx: new Map(),       // node id -> {n, t}
+    idx: new Map(),       // section id -> {n, t}
     layout: null,
     view: { x: 0, y: 0, k: 0.5 },
-    mapView: null,        // map view saved while inside a skill
-    sel: null,            // selected node id, or '__core'
+    mapView: null,        // map view saved while inside a section
+    sel: null,            // '__core' | 'stage:<tree id>' | section id | '<section id>|<question path>'
     selTree: null,
     inner: null,          // {id, sel: path|null, collapsed: Set, items}
     search: '',
+    searchKeys: null,
+    qf: null,             // question filter: 1..4 or 'imp'
     undo: [], redo: [],
     fresh: new Set(),     // ids created in this session and not renamed yet (id follows the first name)
     anim: false,
+    upgraded: false,
     sample: null,
     downloads: null
   };
 
   const app = $('#app'), svg = $('#map'), world = $('#world'), innerG = $('#inner');
-  const L_BG = $('#layer-bg'), L_EDGES = $('#layer-edges'), L_LINK = $('#layer-link'), L_NODES = $('#layer-nodes'), L_FX = $('#layer-fx');
+  const L_EDGES = $('#layer-edges'), L_LINK = $('#layer-link'), L_NODES = $('#layer-nodes'), L_FX = $('#layer-fx');
   const I_EDGES = $('#inner-edges'), I_NODES = $('#inner-nodes');
   const panel = $('#panel'), panelBody = $('#panelBody');
 
@@ -155,13 +169,35 @@
     for (const r of [...reqs(e.n), ...reqsAny(e.n)]) if (!acc.has(r)) { acc.add(r); ancestors(r, acc); }
     return acc;
   }
+  // every question of a section with its effective difficulty
+  function sectionQs(id) {
+    const e = S.idx.get(id); if (!e) return [];
+    const base = e.n.level || e.t.level || null;
+    return flatQ(e.n.questions).map(x => ({ ...x, level: x.level || base }));
+  }
+
+  // selection keys
+  const qKey = (id, path) => id + '|' + path.join('.');
+  const parsePath = s => (s === '' || s == null ? [] : s.split('.').map(Number));
+  function selKind(k = S.sel) {
+    if (!k) return null;
+    if (k === '__core') return 'core';
+    if (k.startsWith('stage:')) return 'stage';
+    if (k.includes('|')) return 'q';
+    return S.idx.has(k) ? 'sec' : null;
+  }
+  function selQ(k = S.sel) { const i = k.indexOf('|'); return { id: k.slice(0, i), path: parsePath(k.slice(i + 1)) }; }
+  function curQ() {
+    if (S.inner) return S.inner.sel ? { id: S.inner.id, path: S.inner.sel } : null;
+    return selKind() === 'q' ? selQ() : null;
+  }
 
   // XP & levels
   function computeXP() {
     let xp = 0;
-    S.idx.forEach(({ n }, id) => {
+    S.idx.forEach((_, id) => {
       const p = nodeProg(id); if (!p) return;
-      if (p.s === 'mastered') xp += n.keystone ? 150 : 100;
+      if (p.s === 'mastered') xp += 100;
       if (p.known) xp += 10 * p.known.length;
     });
     return xp;
@@ -177,219 +213,245 @@
     return 'Архитектор';
   }
 
-  // ------------------------------------------------------------------ layout (radial)
-  const RING0 = 240, RING_GAP = 175;
-  const ringR = d => RING0 + (d - 1) * RING_GAP;
-  const nodeR = n => (n.keystone ? 25 : 21);
+  // ------------------------------------------------------------------ text measuring
+  const mctx = document.createElement('canvas').getContext('2d');
+  const FONT = '"Golos Text", "Segoe UI", system-ui, sans-serif';
+  const MONO = '"JetBrains Mono", ui-monospace, monospace';
+  function wrapText(text, font, maxW) {
+    mctx.font = font;
+    const words = String(text).split(/\s+/).filter(Boolean);
+    const lines = []; let cur = '';
+    const push = w => {
+      // split very long words
+      while (mctx.measureText(w).width > maxW && w.length > 4) {
+        let k = w.length - 1; while (k > 1 && mctx.measureText(w.slice(0, k) + '-').width > maxW) k--;
+        lines.push(w.slice(0, k) + '-'); w = w.slice(k);
+      }
+      return w;
+    };
+    for (const w of words) {
+      const t = cur ? cur + ' ' + w : w;
+      if (mctx.measureText(t).width <= maxW) { cur = t; continue; }
+      if (cur) lines.push(cur);
+      cur = push(w);
+    }
+    if (cur || !lines.length) lines.push(cur);
+    return { lines, w: Math.max(...lines.map(l => mctx.measureText(l).width)) };
+  }
+  const textW = (t, font) => { mctx.font = font; return mctx.measureText(t).width; };
+
+  // ------------------------------------------------------------------ layout: XMind-style timeline
+  // Root pill on the left, a horizontal line through topic circles. Topics alternate up and down;
+  // each has a vertical trunk with section pills, and questions branch to the right of every section.
+  const F_Q = `400 12px ${FONT}`, F_TOPIC = `600 11.5px ${FONT}`, F_SEC = `600 12.5px ${FONT}`, F_CNT = `500 10.5px ${MONO}`;
+  const F_STAGE = `600 13px ${FONT}`, F_ROOT = `700 16px ${FONT}`;
+  const Q_LH = 16, Q_W = 260, T_W = 210, HGAP = 24, VGAP = 4, SGAP = 18, OFF = 104, STAGE_GAP = 60, SEC_DX = 26;
+
+  function measureEntry(e, path, n, lvl, known) {
+    const key = qKey(n.id, path), level = qLevel(e) || lvl, important = qImp(e);
+    if (isTopic(e)) {
+      const t = wrapText(e.topic, F_TOPIC, T_W);
+      const it = { kind: 'topic', key, id: n.id, path, text: e.topic, level, important, lines: t.lines, pad: important ? 26 : 11 };
+      it.w = Math.ceil(it.pad + t.w + 11); it.h = t.lines.length * 15 + 8;
+      it.children = (e.items || []).map((c, i) => measureEntry(c, [...path, i], n, level, known));
+      return it;
+    }
+    const text = qText(e), t = wrapText(text, F_Q, Q_W);
+    const it = { kind: 'q', key, id: n.id, path, text, level, important, known: known.has(text), ans: !!qAns(e), lines: t.lines, children: [], pad: important ? 30 : 15 };
+    it.w = Math.ceil(it.pad + t.w + 6); it.h = t.lines.length * Q_LH + 4;
+    return it;
+  }
+  function measureSection(n, t) {
+    const st = qStats(n.id);
+    const s = { kind: 'sec', key: n.id, id: n.id, text: n.title, cnt: st.total ? `${st.known}/${st.total}` : '' };
+    const cw = s.cnt ? textW(s.cnt, F_CNT) : 0;
+    s.w = Math.ceil(14 + textW(n.title, F_SEC) + (cw ? 10 + cw : 0) + 14); s.h = 26;
+    const known = knownSet(n.id);
+    s.children = (n.questions || []).map((e, i) => measureEntry(e, [i], n, n.level || t.level || null, known));
+    return s;
+  }
+  function subH(it) {
+    if (!it.children.length) return (it.sub = it.h);
+    const s = it.children.reduce((a, c) => a + subH(c), 0) + VGAP * (it.children.length - 1);
+    return (it.sub = Math.max(it.h, s));
+  }
+  function placeTree(it, x, cy, out) {
+    it.x = x; it.y = cy - it.h / 2; out.push(it);
+    if (!it.children.length) return;
+    const total = it.children.reduce((a, c) => a + c.sub, 0) + VGAP * (it.children.length - 1);
+    let y = cy - total / 2;
+    const nx = x + it.w + HGAP;
+    for (const c of it.children) { placeTree(c, nx, y + c.sub / 2, out); y += c.sub + VGAP; }
+  }
 
   function computeLayout() {
-    const trees = S.project.trees;
-    const depth = new Map(), visiting = new Set();
-    const d = id => {
-      if (depth.has(id)) return depth.get(id);
-      const e = S.idx.get(id); if (!e) return 0;
-      if (visiting.has(id)) return 1;
-      visiting.add(id);
-      let v = 1;
-      for (const r of reqs(e.n)) v = Math.max(v, d(r) + 1);
-      const any = reqsAny(e.n);
-      if (any.length) v = Math.max(v, Math.min(...any.map(d)) + 1);
-      visiting.delete(id); depth.set(id, v);
-      return v;
-    };
-    S.idx.forEach((_, id) => d(id));
-
-    const info = trees.map(t => {
-      const layers = new Map();
-      for (const n of t.nodes) { const dd = depth.get(n.id); if (!layers.has(dd)) layers.set(dd, []); layers.get(dd).push(n.id); }
-      let w = 1; layers.forEach(l => { w = Math.max(w, l.length); });
-      return { t, layers, w: Math.max(1.6, w * 0.9 + Math.sqrt(t.nodes.length) * 0.4) };
-    });
-    const W = info.reduce((s, i) => s + i.w, 0) || 1;
-    let a0 = -Math.PI / 2 - (info.length ? Math.PI * info[0].w / W : 0);
-    for (const i of info) { i.a0 = a0; i.span = 2 * Math.PI * i.w / W; i.a1 = a0 + i.span; i.mid = a0 + i.span / 2; a0 = i.a1; }
-
-    const pos = new Map(), ang = new Map();
-    let maxD = 1; depth.forEach(v => { maxD = Math.max(maxD, v); });
-    for (let dd = 1; dd <= maxD; dd++) {
-      for (const i of info) {
-        const ids = i.layers.get(dd); if (!ids) continue;
-        const r = ringR(dd);
-        const pad = Math.min(0.05, i.span * 0.08);
-        const lo = i.a0 + pad, hi = i.a1 - pad, avail = Math.max(0.01, hi - lo);
-        const want = 125 / r;
-        const bary = id => {
-          const e = S.idx.get(id).n;
-          const ps = [...reqs(e), ...reqsAny(e)].filter(x => ang.has(x));
-          if (!ps.length) return i.mid;
-          let s = 0;
-          for (const x of ps) { let a = ang.get(x); while (a - i.mid > Math.PI) a -= 2 * Math.PI; while (a - i.mid < -Math.PI) a += 2 * Math.PI; s += a; }
-          return s / ps.length;
-        };
-        const items = ids.map((id, k) => ({ id, k, b: bary(id) })).sort((a, b) => a.b - b.b || a.k - b.k);
-        const n = items.length;
-        const tight = want * n > avail;
-        const step = tight ? avail / n : want;
-        const gw = step * (n - 1);
-        let c = items.reduce((s, x) => s + x.b, 0) / n;
-        c = clamp(c, lo + gw / 2, hi - gw / 2);
-        items.forEach((it, k) => {
-          const a = c - gw / 2 + k * step;
-          const rr = r + (tight ? (k % 2 ? 62 : -10) : 0);
-          ang.set(it.id, a);
-          pos.set(it.id, { x: Math.cos(a) * rr, y: Math.sin(a) * rr });
-        });
+    const items = new Map(), pos = new Map(), stages = [];
+    const ct = S.project.center?.title || S.project.title;
+    const root = { kind: 'core', key: '__core', text: ct };
+    root.w = Math.ceil(textW(ct, F_ROOT) + 46); root.h = 46; root.x = 0; root.y = -root.h / 2;
+    items.set(root.key, root);
+    const sideRight = { '-1': root.w, '1': root.w };
+    let prev = { cx: root.w, r: 0 };
+    let bx0 = root.x, bx1 = root.w, by0 = root.y, by1 = -root.y;
+    S.project.trees.forEach((t, i) => {
+      const side = i % 2 === 0 ? -1 : 1;
+      const secs = t.nodes.map(n => measureSection(n, t));
+      secs.forEach(subH);
+      const totalQ = t.nodes.reduce((a, n) => a + flatQ(n.questions).length, 0);
+      let r = clamp(24 + Math.sqrt(totalQ) * 3.2, 34, 62), tl;
+      for (;;) {
+        tl = wrapText(t.title, F_STAGE, 2 * r - 20);
+        if ((tl.w <= 2 * r - 14 && tl.lines.length * 15 <= 2 * r - 22) || r >= 76) break;
+        r += 3;
       }
-    }
-    S.idx.forEach(({ n }, id) => { if (n.pos && Number.isFinite(n.pos.x) && Number.isFinite(n.pos.y)) pos.set(id, { x: n.pos.x, y: n.pos.y }); });
-
-    const sectors = info.map(i => {
-      const ds = [...i.layers.keys()];
-      let rMax = ringR(ds.length ? Math.max(...ds) : 1) + 110;
-      for (const n of i.t.nodes) { const p = pos.get(n.id); if (p) rMax = Math.max(rMax, Math.hypot(p.x, p.y) + 100); }
-      return { t: i.t, a0: i.a0, a1: i.a1, mid: i.mid, rMax };
+      const cx = Math.round(Math.max(prev.cx + prev.r + r + STAGE_GAP, sideRight[side] + 56));
+      const H = secs.reduce((a, s) => a + s.sub, 0) + SGAP * Math.max(0, secs.length - 1);
+      let y = side < 0 ? -(OFF + H) : OFF;
+      const placed = [];
+      for (const s of secs) { placeTree(s, cx + SEC_DX, y + s.sub / 2, placed); y += s.sub + SGAP; }
+      let right = cx + r, y0 = -r, y1 = r;
+      for (const it of placed) {
+        it.tid = t.id; it.color = t.color;
+        right = Math.max(right, it.x + it.w); y0 = Math.min(y0, it.y); y1 = Math.max(y1, it.y + it.h);
+        items.set(it.key, it);
+      }
+      for (const s of secs) pos.set(s.id, { x: s.x + s.w / 2, y: s.y + s.h / 2 });
+      sideRight[side] = right;
+      const far = secs.length ? (side < 0 ? secs[0] : secs[secs.length - 1]) : null;
+      const st = { kind: 'stage', key: 'stage:' + t.id, tid: t.id, t, cx, r, side, lines: tl.lines, x: cx - r, y: -r, w: 2 * r, h: 2 * r, secs,
+        trunkEnd: far ? far.y + far.h / 2 : null, box: { x0: cx - r - 20, y0, x1: right, y1 } };
+      items.set(st.key, st);
+      stages.push(st);
+      prev = { cx, r };
+      bx1 = Math.max(bx1, right); by0 = Math.min(by0, y0); by1 = Math.max(by1, y1);
     });
-    S.layout = { pos, depth, sectors, maxD };
+    S.layout = { root, stages, items, pos, bounds: { x0: bx0, y0: by0, x1: bx1, y1: by1 } };
   }
 
   // ------------------------------------------------------------------ render: map
-  const polar = (r, a) => [Math.cos(a) * r, Math.sin(a) * r];
-  const f1 = v => v.toFixed(1);
-  function hexPts(r) {
-    const pts = [];
-    for (let i = 0; i < 6; i++) { const a = -Math.PI / 2 + i * Math.PI / 3; pts.push(f1(Math.cos(a) * r) + ',' + f1(Math.sin(a) * r)); }
-    return pts.join(' ');
-  }
-  function wrapLabel(t, max = 18) {
-    const words = String(t).split(' '); const lines = []; let cur = '';
-    for (const w of words) {
-      if ((cur + ' ' + w).trim().length > max && cur) { lines.push(cur); cur = w; } else cur = (cur + ' ' + w).trim();
+  const f1 = v => (Math.round(v * 10) / 10).toString();
+  // XMind "tree right" connectors: from the parent's right edge along a short bus to every child
+  function bracket(p, out) {
+    const px = p.x + p.w, py = p.y + p.h / 2, bx = px + 10;
+    for (const c of p.children) {
+      const cy = c.y + c.h / 2, x2 = c.x - 3, dy = cy - py;
+      if (Math.abs(dy) < 1.5) out.push(`M${f1(px)},${f1(py)}H${f1(x2)}`);
+      else {
+        const r = Math.min(6, Math.abs(dy)), s = Math.sign(dy);
+        out.push(`M${f1(px)},${f1(py)}H${f1(bx)}V${f1(cy - s * r)}Q${f1(bx)},${f1(cy)} ${f1(bx + r)},${f1(cy)}H${f1(x2)}`);
+      }
+      if (c.children.length) bracket(c, out);
     }
-    if (cur) lines.push(cur);
-    if (lines.length > 2) { lines[1] = lines.slice(1).join(' '); lines.length = 2; }
-    if (lines[1] && lines[1].length > max + 2) lines[1] = lines[1].slice(0, max + 1) + '…';
-    return lines;
-  }
-  function arcPath(r, a0, a1, sweep = 1) {
-    const [x0, y0] = polar(r, a0), [x1, y1] = polar(r, a1);
-    return `M${f1(x0)},${f1(y0)} A${r},${r} 0 ${Math.abs(a1 - a0) > Math.PI ? 1 : 0} ${sweep} ${f1(x1)},${f1(y1)}`;
   }
 
-  function renderBg() {
-    const { sectors, maxD } = S.layout;
+  function rootSvg(r) {
+    return `<g class="root-pill" data-key="__core" data-core="1" transform="translate(${f1(r.x)},${f1(r.y)})">
+      <rect class="rp-sel" x="-5" y="-5" width="${r.w + 10}" height="${r.h + 10}" rx="14"/>
+      <rect class="rp" width="${r.w}" height="${r.h}" rx="10"/>
+      <text x="${f1(r.w / 2)}" y="${f1(r.h / 2 + 5.5)}">${esc(r.text)}</text></g>`;
+  }
+  function stageSvg(s) {
+    const t = s.t, total = t.nodes.length, m = t.nodes.filter(n => isMastered(n.id)).length;
+    const pct = total ? Math.round(100 * m / total) : 0;
+    const lh = 15, top = -((s.lines.length - 1) * lh) / 2 + 4.5;
+    return `<g class="stage${pct === 100 && total ? ' done' : ''}" data-key="${esc(s.key)}" data-tree="${esc(t.id)}" style="--c:${esc(t.color)}" transform="translate(${s.cx},0)">
+      <circle class="st-sel" r="${s.r + 9}"/>
+      ${pct ? `<circle class="st-ring" r="${s.r + 4}"/><circle class="st-prog" r="${s.r + 4}" pathLength="100" stroke-dasharray="${pct} 100" transform="rotate(-90)"/>` : ''}
+      <circle class="st-disc" r="${s.r}"/>
+      <text class="st-t">${s.lines.map((l, i) => `<tspan x="0" y="${f1(top + i * lh)}">${esc(l)}</tspan>`).join('')}</text></g>`;
+  }
+  function secSvg(s) {
+    const st = nodeState(s.id);
+    return `<g class="sec s-${st}" data-key="${esc(s.key)}" data-id="${esc(s.id)}" style="--c:${esc(s.color)}" transform="translate(${f1(s.x)},${f1(s.y)})">
+      <rect class="sb-sel" x="-4" y="-4" width="${s.w + 8}" height="${s.h + 8}" rx="${s.h / 2 + 4}"/>
+      <rect class="sb" width="${s.w}" height="${s.h}" rx="${s.h / 2}"/>
+      <text class="sl" x="14" y="17.5">${esc(s.text)}</text>
+      ${s.cnt ? `<text class="sc" x="${s.w - 13}" y="17" text-anchor="end">${s.cnt}</text>` : ''}
+      ${needsReview(s.id) ? `<circle class="due" cx="${s.w - 4}" cy="4" r="3.5"><title>Пора повторить</title></circle>` : ''}</g>`;
+  }
+  function impSvg(x, y) { return `<g class="imp" transform="translate(${x},${y})"><circle r="6.2"/><text y="3.6">!</text></g>`; }
+  function entrySvg(it) {
+    const lc = levelColor(it.level);
+    const attrs = `data-key="${esc(it.key)}" data-id="${esc(it.id)}" data-path="${it.path.join('.')}" data-l="${it.level || 0}"${it.important ? ' data-imp="1"' : ''}${lc ? ` style="--lc:${lc}"` : ''} transform="translate(${f1(it.x)},${f1(it.y)})"`;
+    if (it.kind === 'topic') {
+      return `<g class="qi tp" ${attrs}><rect class="tb" width="${it.w}" height="${it.h}" rx="${Math.min(it.h / 2, 9)}"/>
+        ${it.important ? impSvg(13, f1(it.h / 2)) : ''}
+        <text class="tt">${it.lines.map((l, i) => `<tspan x="${it.pad}" y="${f1(15 + i * 15)}">${esc(l)}</tspan>`).join('')}</text></g>`;
+    }
+    return `<g class="qi q${it.known ? ' known' : ''}" ${attrs}><rect class="qhit" x="-4" y="-2" width="${it.w + 6}" height="${it.h + 4}" rx="5"/>
+      <g data-check="1"><circle class="qc-hit" cx="5" cy="10" r="8"/><circle class="qc" cx="5" cy="10" r="3.8"/></g>
+      ${it.important ? impSvg(19, 10) : ''}
+      <text class="qt">${it.lines.map((l, i) => `<tspan x="${it.pad}" y="${f1(14 + i * Q_LH)}">${esc(l)}</tspan>`).join('')}</text>
+      ${it.ans ? `<circle class="has-a" cx="${it.w + 1}" cy="5" r="2"><title>Есть ответ</title></circle>` : ''}</g>`;
+  }
+
+  function renderMap() {
+    const L = S.layout;
+    let eh = '', nh = rootSvg(L.root);
+    let px = L.root.x + L.root.w;
+    for (const s of L.stages) {
+      eh += `<path class="spine" style="--c:${esc(s.t.color)}" d="M${f1(px)},0H${f1(s.cx - s.r)}"/>`;
+      px = s.cx + s.r;
+    }
+    for (const s of L.stages) {
+      const lines = [];
+      if (s.secs.length) {
+        lines.push(`M${s.cx},${s.side * s.r}V${f1(s.trunkEnd)}`);
+        for (const sec of s.secs) lines.push(`M${s.cx},${f1(sec.y + sec.h / 2)}H${f1(sec.x)}`);
+      }
+      const conn = [];
+      for (const sec of s.secs) if (sec.children.length) bracket(sec, conn);
+      eh += `<g style="--c:${esc(s.t.color)}">${lines.length ? `<path class="trunk" d="${lines.join('')}"/>` : ''}${conn.length ? `<path class="conn" d="${conn.join('')}"/>` : ''}</g>`;
+      nh += stageSvg(s);
+      const walk = it => { nh += it.kind === 'sec' ? secSvg(it) : entrySvg(it); it.children.forEach(walk); };
+      s.secs.forEach(walk);
+    }
+    L_EDGES.innerHTML = eh;
+    L_NODES.innerHTML = nh;
+    markSel();
+    applySearch();
+  }
+  function refreshMap() { computeLayout(); renderMap(); }
+
+  // selection marks and prerequisite links, without rebuilding the map
+  function markSel() {
+    $$('.sel, .req, .dep', L_NODES).forEach(el => el.classList.remove('sel', 'req', 'dep'));
+    L_LINK.innerHTML = '';
+    if (!S.sel || !S.layout) return;
+    const el = L_NODES.querySelector(`[data-key="${CSS.escape(S.sel)}"]`);
+    if (el) el.classList.add('sel');
+    if (selKind() !== 'sec') return;
+    const { n } = S.idx.get(S.sel), b = S.layout.pos.get(S.sel);
     let h = '';
-    for (let d = 1; d <= maxD; d++) h += `<circle class="ring" r="${ringR(d)}"/>`;
-    for (const s of sectors) {
-      const c = esc(s.t.color || '#8f939e');
-      const [x0, y0] = polar(108, s.a0), [X0, Y0] = polar(s.rMax + 14, s.a0);
-      h += `<line class="divider" x1="${f1(x0)}" y1="${f1(y0)}" x2="${f1(X0)}" y2="${f1(Y0)}"/>`;
-      const g = Math.min(0.02, (s.a1 - s.a0) * 0.06);
-      h += `<path class="rim" style="--c:${c}" d="${arcPath(s.rMax, s.a0 + g, s.a1 - g)}"/>`;
-      const lr = s.rMax + 34;
-      const lower = Math.sin(s.mid) > 0.15;
-      h += `<path id="arc-${esc(s.t.id)}" fill="none" d="${lower ? arcPath(lr, s.a1, s.a0, 0) : arcPath(lr, s.a0, s.a1, 1)}"/>`;
-      const arc = lr * (s.a1 - s.a0) * 0.9, chars = Math.max(4, s.t.title.length);
-      const fs = Math.min(22, arc / (chars * 1.02)), fsFar = Math.min(56, arc / (chars * 1.02));
-      h += `<text class="sector-label" dy="${lower ? '0.95em' : '0'}" style="--c:${c};--fs:${f1(fs)}px;--fs-far:${f1(fsFar)}px"><textPath href="#arc-${esc(s.t.id)}" startOffset="50%" text-anchor="middle">${esc(s.t.title)}</textPath></text>`;
-    }
-    L_BG.innerHTML = h;
+    const link = (from, to, cls) => {
+      const a = S.layout.pos.get(from), c = S.layout.pos.get(to); if (!a || !c) return;
+      const lift = Math.min(260, 60 + Math.abs(c.x - a.x) * 0.18);
+      const cy = Math.min(a.y, c.y) - lift;
+      h += `<path class="${cls}" d="M${f1(a.x)},${f1(a.y)} C${f1(a.x)},${f1(cy)} ${f1(c.x)},${f1(cy)} ${f1(c.x)},${f1(c.y)}"/>`;
+    };
+    for (const r of [...reqs(n), ...reqsAny(n)]) { link(r, S.sel, 'link-req'); L_NODES.querySelector(`.sec[data-id="${CSS.escape(r)}"]`)?.classList.add('req'); }
+    for (const d of dependents(S.sel)) L_NODES.querySelector(`.sec[data-id="${CSS.escape(d)}"]`)?.classList.add('dep');
+    if (b) L_LINK.innerHTML = h;
   }
-
-  function edgeClass(from, to) {
-    const fm = from === '__core' || isMastered(from);
-    if (fm && nodeState(to) === 'mastered') return 'e-done';
-    if (fm) return 'e-open';
-    return 'e-locked';
+  function applySearch() {
+    const keys = S.searchKeys;
+    svg.classList.toggle('searching', !!keys);
+    $$('.hit', L_NODES).forEach(el => el.classList.remove('hit'));
+    if (keys) keys.forEach(k => L_NODES.querySelector(`[data-key="${CSS.escape(k)}"]`)?.classList.add('hit'));
   }
-  function edgePath(a, b) {
-    const r1 = Math.hypot(a.x, a.y), r2 = Math.hypot(b.x, b.y);
-    const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2, mr = Math.hypot(mx, my);
-    if (mr < 40) return `M${f1(a.x)},${f1(a.y)} L${f1(b.x)},${f1(b.y)}`;
-    const k = (r1 + r2) / 2 / mr;
-    const cx = mx + (mx * k - mx) * 0.85, cy = my + (my * k - my) * 0.85;
-    return `M${f1(a.x)},${f1(a.y)} Q${f1(cx)},${f1(cy)} ${f1(b.x)},${f1(b.y)}`;
+  function setQFilter(f) {
+    S.qf = S.qf === f ? null : f;
+    svg.classList.remove('qf-1', 'qf-2', 'qf-3', 'qf-4', 'qf-imp');
+    if (S.qf) svg.classList.add('qf-' + S.qf);
+    renderLegend();
   }
-
-  function highlightSet() {
-    if (S.search) return { nodes: new Set(searchNodes(S.search).map(r => r.id)) };
-    if (S.selTree) { const t = treeById(S.selTree); return t ? { nodes: new Set(t.nodes.map(n => n.id)), tree: t.id } : null; }
-    if (!S.sel || !S.idx.has(S.sel)) return null;
-    const anc = ancestors(S.sel);
-    return { nodes: new Set([S.sel, ...anc, ...dependents(S.sel)]), anc };
-  }
-
-  function renderEdges() {
-    const pos = S.layout.pos, hl = highlightSet();
-    const core = { x: 0, y: 0 };
-    let h = '';
-    S.idx.forEach(({ n, t }, id) => {
-      const b = pos.get(id); if (!b) return;
-      const rs = reqs(n), ra = reqsAny(n), c = esc(t.color);
-      const lit = from => !!hl && (hl.tree ? t.id === hl.tree
-        : hl.nodes.has(id) && hl.nodes.has(from) && (id === S.sel || from === S.sel || (hl.anc && hl.anc.has(from) && (hl.anc.has(id) || id === S.sel))));
-      if (!rs.length && !ra.length) h += `<path class="edge ${edgeClass('__core', id)}${hl && hl.nodes.has(id) ? ' hl' : ''}" style="--c:${c}" d="${edgePath(core, b)}"/>`;
-      for (const r of rs) { const a = pos.get(r); if (a) h += `<path class="edge ${edgeClass(r, id)}${lit(r) ? ' hl' : ''}" style="--c:${c}" d="${edgePath(a, b)}"/>`; }
-      for (const r of ra) { const a = pos.get(r); if (a) h += `<path class="edge e-any ${edgeClass(r, id)}${lit(r) ? ' hl' : ''}" style="--c:${c}" d="${edgePath(a, b)}"/>`; }
-    });
-    L_EDGES.innerHTML = h;
-  }
-
-  function nodeSvg(id) {
-    const { n, t } = S.idx.get(id);
-    const p = S.layout.pos.get(id); if (!p) return '';
-    const st = nodeState(id), R = nodeR(n), ks = !!n.keystone;
-    const { total, known } = qStats(id);
-    const pct = total ? Math.round(100 * known / total) : 0;
-    const ab = abbrOf(n);
-    const lines = wrapLabel(n.title);
-    const label = lines.map((l, i) => `<tspan x="0" dy="${i ? '1.2em' : 0}">${esc(l)}</tspan>`).join('');
-    const pr = R + (ks ? 9 : 5);
-    return `<g class="node s-${st}${ks ? ' ks' : ''}${S.sel === id ? ' sel' : ''}" data-id="${esc(id)}" transform="translate(${f1(p.x)},${f1(p.y)})" style="--c:${esc(t.color)}">
-      <circle class="hit" r="${R + 12}"/>
-      ${ks ? `<polygon class="halo" points="${hexPts(R + 11)}"/><polygon class="shape-out" points="${hexPts(R + 5)}"/><polygon class="shape" points="${hexPts(R)}"/>`
-        : `<circle class="halo" r="${R + 7}"/><circle class="shape" r="${R}"/>`}
-      ${pct && st !== 'locked' && st !== 'mastered' ? `<circle class="prog-bg" r="${pr}"/><circle class="prog" r="${pr}" pathLength="100" stroke-dasharray="${pct} 100" transform="rotate(-90)"/>` : ''}
-      <text class="abbr" dy="0.36em" style="--afs:${abbrSize(ab) + (ks ? 1 : 0)}px">${esc(ab)}</text>
-      ${needsReview(id) ? `<circle class="due" cx="${f1(R * 0.78)}" cy="${f1(-R * 0.78)}" r="4"/>` : ''}
-      <circle class="ring-sel" r="${R + (ks ? 13 : 9)}"/>
-      <text class="lbl" y="${R + (ks ? 24 : 20)}">${label}</text>
-    </g>`;
-  }
-
-  function knobPos(id) {
-    const p = S.layout.pos.get(id), n = S.idx.get(id).n;
-    const len = Math.hypot(p.x, p.y) || 1, d = nodeR(n) + (n.keystone ? 22 : 17);
-    return { x: p.x + p.x / len * d, y: p.y + p.y / len * d };
-  }
-
-  function renderNodes() {
-    const hl = highlightSet();
-    const ct = S.project.center?.title || S.project.title;
-    const total = S.idx.size, m = [...S.idx.keys()].filter(isMastered).length;
-    let ticks = '';
-    for (let i = 0; i < 48; i++) { const a = i / 48 * Math.PI * 2, r0 = i % 4 ? 85 : 82; ticks += `<line class="core-tick" x1="${f1(Math.cos(a) * r0)}" y1="${f1(Math.sin(a) * r0)}" x2="${f1(Math.cos(a) * 88)}" y2="${f1(Math.sin(a) * 88)}"/>`; }
-    let h = `<g class="core${S.sel === '__core' ? ' sel' : ''}" data-core="1"><circle class="core-halo" r="98"/>${ticks}<circle class="core-ring" r="76"/><circle class="core-disc" r="70"/>
-      <text class="core-title" y="3" style="font-size:${f1(Math.min(17, 150 / Math.max(4, ct.length * 1.25)))}px">${esc(ct)}</text>
-      <text class="core-sub" y="24">${m} / ${total}</text></g>`;
-    S.idx.forEach((_, id) => { h += nodeSvg(id); });
-    if (S.sel && S.idx.has(S.sel) && !S.inner) {
-      const k = knobPos(S.sel);
-      h += `<g class="knob" transform="translate(${f1(k.x)},${f1(k.y)})"><title>Тяни к навыку, чтобы связать. Клик добавляет следующий навык</title><circle r="9"/><path d="M-4 0h8M0 -4v8"/></g>`;
-    }
-    L_NODES.innerHTML = h;
-    svg.classList.toggle('focus', !!hl);
-    if (hl) $$('.node', L_NODES).forEach(g => g.classList.toggle('hl', hl.nodes.has(g.dataset.id)));
-  }
-
-  function renderMap() { renderBg(); renderEdges(); renderNodes(); }
-  function refreshMap() { renderEdges(); renderNodes(); }
 
   // ------------------------------------------------------------------ stars + view
   const starCanvas = $('#stars');
   let stars = [];
   function seedStars() {
     let s = 7; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
-    stars = Array.from({ length: 220 }, () => ({ x: rnd(), y: rnd(), r: rnd() * 1.1 + 0.2, a: rnd() * 0.45 + 0.08, d: rnd() * 0.5 + 0.1 }));
+    stars = Array.from({ length: 160 }, () => ({ x: rnd(), y: rnd(), r: rnd() * 1 + 0.2, a: rnd() * 0.3 + 0.05, d: rnd() * 0.5 + 0.1 }));
   }
   function drawStars() {
     const dpr = window.devicePixelRatio || 1;
@@ -398,7 +460,7 @@
     const ctx = starCanvas.getContext('2d');
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, w, h);
-    ctx.fillStyle = '#dfe3f2';
+    ctx.fillStyle = '#c9d4ff';
     for (const st of stars) {
       const x = ((st.x * w * 1.5 + S.view.x * st.d * 0.2) % (w * 1.5) + w * 1.5) % (w * 1.5) - w * 0.25;
       const y = ((st.y * h * 1.5 + S.view.y * st.d * 0.2) % (h * 1.5) + h * 1.5) % (h * 1.5) - h * 0.25;
@@ -409,22 +471,25 @@
   function applyView() {
     const v = S.view;
     (S.inner ? innerG : world).setAttribute('transform', `translate(${v.x.toFixed(2)},${v.y.toFixed(2)}) scale(${v.k.toFixed(4)})`);
-    svg.classList.toggle('far', !S.inner && v.k < 0.42);
+    svg.classList.toggle('far', !S.inner && v.k < 0.3);
     drawStars();
     positionInline();
   }
-  let viewAnim = 0;
+  let viewAnim = 0, viewDone = null;
+  // a newer animation (or a pan) cancels the running one; its promise still resolves
+  function stopView() { cancelAnimationFrame(viewAnim); if (viewDone) { const r = viewDone; viewDone = null; r(); } }
   function animateView(target, ms = 520, ease = 'out') {
-    cancelAnimationFrame(viewAnim);
+    stopView();
     if (reduceMotion() || ms <= 0) { S.view = { ...target }; applyView(); return Promise.resolve(); }
     const from = { ...S.view }, t0 = performance.now();
     const fn = ease === 'in' ? p => p * p * p : ease === 'inout' ? p => (p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2) : p => 1 - Math.pow(1 - p, 3);
     return new Promise(res => {
+      viewDone = res;
       const step = t => {
         const p = Math.min(1, (t - t0) / ms), e = fn(p);
         S.view = { x: from.x + (target.x - from.x) * e, y: from.y + (target.y - from.y) * e, k: from.k + (target.k - from.k) * e };
         applyView();
-        if (p < 1) viewAnim = requestAnimationFrame(step); else res();
+        if (p < 1) viewAnim = requestAnimationFrame(step); else { viewDone = null; res(); }
       };
       viewAnim = requestAnimationFrame(step);
     });
@@ -445,35 +510,59 @@
     return { k, x: b.x + b.w / 2 - x * k, y: b.y + b.h / 2 + (isNarrow() ? 30 : 10) - y * k };
   }
   const flyTo = (x, y, k, ms, ease) => animateView(viewFor(x, y, k), ms, ease);
-  function fitAll(animate = true) {
+  function flyToBox(bx, maxK = 1) {
     const b = viewport();
-    let R = 400; S.layout.sectors.forEach(s => { R = Math.max(R, s.rMax + 70); });
-    const k = clamp(Math.min(b.w, b.h - 90) / (2 * R), 0.06, 1.2);
-    return animate ? flyTo(0, 0, k) : animateView(viewFor(0, 0, k), 0);
+    const w = bx.x1 - bx.x0 + 80, h = bx.y1 - bx.y0 + 80;
+    const k = clamp(Math.min(b.w / w, (b.h - 110) / h), 0.12, maxK);
+    return flyTo((bx.x0 + bx.x1) / 2, (bx.y0 + bx.y1) / 2, k);
+  }
+  function fitAll(animate = true) {
+    const bx = S.layout.bounds, b = viewport();
+    const k = clamp(Math.min(b.w / (bx.x1 - bx.x0 + 120), (b.h - 120) / (bx.y1 - bx.y0 + 80)), 0.02, 1);
+    const v = viewFor((bx.x0 + bx.x1) / 2, (bx.y0 + bx.y1) / 2, k);
+    return animate ? animateView(v) : animateView(v, 0);
+  }
+  // The start of the line: the root and the first topics, sized to fit their height.
+  function startView(animate = false) {
+    const L = S.layout, b = viewport();
+    const first = L.stages.slice(0, 2);
+    let y0 = L.root.y, y1 = -L.root.y;
+    for (const s of first) { y0 = Math.min(y0, s.box.y0); y1 = Math.max(y1, s.box.y1); }
+    const top = isNarrow() ? 110 : 64, bottom = 24;
+    const k = clamp((b.h - top - bottom) / (y1 - y0 + 40), isNarrow() ? 0.4 : 0.5, 0.95);
+    let vy = top + (b.h - top - bottom - (y1 - y0) * k) / 2 - y0 * k;
+    if ((y1 - y0) * k > b.h - top - bottom) vy = top + (b.h - top - bottom) / 2; // keep the line in the middle
+    // keep the root clear of the legend on the left
+    const lg = $('#legend').getBoundingClientRect(), left = !isNarrow() && !app.classList.contains('inner-mode') ? lg.right + 24 : 16;
+    const v = { k, x: left - L.root.x * k, y: vy };
+    return animate ? animateView(v) : animateView(v, 0);
   }
   function zoomAt(f, sx, sy) {
-    const v = S.view, k = clamp(v.k * f, S.inner ? 0.2 : 0.05, 3);
+    const v = S.view, k = clamp(v.k * f, S.inner ? 0.2 : 0.02, 3);
     const wx = (sx - v.x) / v.k, wy = (sy - v.y) / v.k;
     S.view = { k, x: sx - wx * k, y: sy - wy * k };
     applyView();
   }
   function zoomCenter(f) { const b = viewport(); zoomAt(f, b.x + b.w / 2, b.y + b.h / 2); }
-  function toWorld(cx, cy) { const r = svg.getBoundingClientRect(); return { x: (cx - r.left - S.view.x) / S.view.k, y: (cy - r.top - S.view.y) / S.view.k }; }
   function toScreen(x, y) { const r = svg.getBoundingClientRect(); return { x: r.left + S.view.x + x * S.view.k, y: r.top + S.view.y + y * S.view.k }; }
   // Pan just enough to show a world-space box.
   function ensureVisible(x, y, w = 0, h = 0) {
-    const b = viewport(), r = svg.getBoundingClientRect(), m = 70;
+    const b = viewport(), r = svg.getBoundingClientRect(), m = 60;
     const a = toScreen(x, y), z = toScreen(x + w, y + h);
     const ax = a.x - r.left, ay = a.y - r.top, zx = z.x - r.left, zy = z.y - r.top;
     let dx = 0, dy = 0;
-    if (ax < b.x + m) dx = b.x + m - ax; else if (zx > b.x + b.w - m) dx = b.x + b.w - m - zx;
-    if (ay < b.y + m + 40) dy = b.y + m + 40 - ay; else if (zy > b.y + b.h - m) dy = b.y + b.h - m - zy;
+    if (ax < b.x + m) dx = b.x + m - ax; else if (zx > b.x + b.w - m) dx = Math.max(b.x + b.w - m - zx, b.x + m - ax);
+    if (ay < b.y + m + 40) dy = b.y + m + 40 - ay; else if (zy > b.y + b.h - m) dy = Math.max(b.y + b.h - m - zy, b.y + m + 40 - ay);
     if (dx || dy) return animateView({ k: S.view.k, x: S.view.x + dx, y: S.view.y + dy }, 280);
     return Promise.resolve();
   }
-  function ensureNodeVisible(id) {
-    const p = S.layout.pos.get(id); if (!p) return Promise.resolve();
-    return ensureVisible(p.x - 80, p.y - 40, 160, 110);
+  function ensureItemVisible(key) {
+    const it = S.layout && S.layout.items.get(key); if (!it) return Promise.resolve();
+    if (S.view.k < 0.45) {
+      const b = viewport();
+      return animateView(viewFor(it.x + it.w / 2 + Math.min(200, b.w / 4), it.y + it.h / 2, 0.75), 420);
+    }
+    return ensureVisible(it.x, it.y, Math.min(it.w, 420), it.h);
   }
 
   // ------------------------------------------------------------------ undo / redo (project snapshots)
@@ -489,11 +578,13 @@
     to.push(JSON.stringify(S.project));
     S.project = JSON.parse(from.pop());
     indexProject();
-    if (S.sel && S.sel !== '__core' && !S.idx.has(S.sel)) S.sel = null;
     if (S.inner && !S.idx.has(S.inner.id)) { leaveInnerInstant(); }
     if (S.inner && S.inner.sel && !entryAt(innerNode(), S.inner.sel)) S.inner.sel = [];
+    S.selTree = S.selTree && treeById(S.selTree) ? S.selTree : null;
+    computeLayout();
+    if (S.sel && !S.layout.items.has(S.sel) && !(S.inner && S.sel === S.inner.id)) S.sel = null;
     saveProject();
-    if (!S.sel && !S.inner && S.selTree === null) panel.hidden = true;
+    if (!S.sel && !S.inner) closePanel();
   }
   const undo = () => restoreSnapshot(S.undo, S.redo);
   const redo = () => restoreSnapshot(S.redo, S.undo);
@@ -506,7 +597,6 @@
   const pointers = new Map();
   let drag = null, pinch = null, movingTimer = null, lastTap = null, pressTimer = null;
   function markMoving() { svg.classList.add('moving'); clearTimeout(movingTimer); movingTimer = setTimeout(() => svg.classList.remove('moving'), 160); }
-  const parsePath = s => (s === '' || s == null ? [] : s.split('.').map(Number));
   function hitInfo(target) {
     if (S.inner) {
       const it = target.closest('.it');
@@ -516,13 +606,16 @@
       if (target.closest('[data-fold]')) return { kind: 'fold', path };
       return { kind: 'item', path };
     }
-    if (target.closest('.knob')) return { kind: 'knob' };
-    const g = target.closest('.node');
+    const q = target.closest('.qi');
+    if (q) return { kind: target.closest('[data-check]') ? 'qcheck' : 'q', id: q.dataset.id, path: parsePath(q.dataset.path) };
+    const g = target.closest('.sec');
     if (g) return { kind: 'node', id: g.dataset.id };
-    if (target.closest('.core')) return { kind: 'core' };
+    const st = target.closest('.stage');
+    if (st) return { kind: 'stage', tid: st.dataset.tree };
+    if (target.closest('.root-pill')) return { kind: 'core' };
     return { kind: 'empty' };
   }
-  const hitKey = h => h.kind + ':' + (h.id || (h.path ? h.path.join('.') : ''));
+  const hitKey = h => h.kind + ':' + (h.id || h.tid || '') + (h.path ? '|' + h.path.join('.') : '');
 
   svg.addEventListener('pointerdown', e => {
     if (S.anim) return;
@@ -532,7 +625,7 @@
     svg.focus({ preventScroll: true });
     svg.setPointerCapture(e.pointerId);
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    cancelAnimationFrame(viewAnim);
+    stopView();
     clearTimeout(pressTimer);
     if (pointers.size === 2) {
       const [a, b] = [...pointers.values()];
@@ -541,10 +634,6 @@
     }
     const h = hitInfo(e.target);
     drag = { sx: e.clientX, sy: e.clientY, vx: S.view.x, vy: S.view.y, h, moved: false, touch: e.pointerType === 'touch' };
-    if (h.kind === 'node' && !drag.touch) {
-      const p = S.layout.pos.get(h.id), w = toWorld(e.clientX, e.clientY);
-      drag.off = { x: p.x - w.x, y: p.y - w.y };
-    }
     if (drag.touch && h.kind !== 'empty') {
       pressTimer = setTimeout(() => {
         if (drag && !drag.moved) { const d = drag; drag = null; pointers.clear(); openContextFor(d.h, d.sx, d.sy); }
@@ -562,23 +651,8 @@
     }
     if (!drag) return;
     const dx = e.clientX - drag.sx, dy = e.clientY - drag.sy;
-    if (!drag.moved && Math.hypot(dx, dy) > 4) {
-      drag.moved = true; clearTimeout(pressTimer);
-      if (drag.h.kind === 'node' && !drag.touch) pushUndo();
-      else if (drag.h.kind !== 'knob') svg.classList.add('panning');
-    }
+    if (!drag.moved && Math.hypot(dx, dy) > 4) { drag.moved = true; clearTimeout(pressTimer); svg.classList.add('panning'); }
     if (!drag.moved) return;
-    if (drag.h.kind === 'knob') { drawLinkLine(e); return; }
-    if (drag.h.kind === 'node' && !drag.touch) {
-      const w = toWorld(e.clientX, e.clientY);
-      const p = { x: Math.round(w.x + drag.off.x), y: Math.round(w.y + drag.off.y) };
-      S.layout.pos.set(drag.h.id, p);
-      const g = L_NODES.querySelector(`.node[data-id="${CSS.escape(drag.h.id)}"]`);
-      if (g) g.setAttribute('transform', `translate(${p.x},${p.y})`);
-      const kb = L_NODES.querySelector('.knob'); if (kb) kb.remove();
-      renderEdges();
-      return;
-    }
     S.view.x = drag.vx + dx; S.view.y = drag.vy + dy;
     applyView(); markMoving();
   });
@@ -589,16 +663,7 @@
     if (!drag) return;
     svg.classList.remove('panning');
     const d = drag; drag = null;
-    if (d.h.kind === 'knob') { finishLink(e, d.moved); return; }
-    if (d.moved) {
-      if (d.h.kind === 'node' && !d.touch) {
-        const p = S.layout.pos.get(d.h.id);
-        S.idx.get(d.h.id).n.pos = { x: p.x, y: p.y };
-        saveProject();
-      }
-      return;
-    }
-    if (e.type === 'pointercancel') return;
+    if (d.moved || e.type === 'pointercancel') return;
     onTap(d.h);
   };
   svg.addEventListener('pointerup', endPointer);
@@ -606,7 +671,7 @@
   svg.addEventListener('wheel', e => {
     e.preventDefault();
     if (S.anim) return;
-    cancelAnimationFrame(viewAnim);
+    stopView();
     const r = svg.getBoundingClientRect();
     if (e.ctrlKey || e.metaKey) zoomAt(Math.exp(-e.deltaY * 0.01), e.clientX - r.left, e.clientY - r.top);
     else {
@@ -629,38 +694,17 @@
     const dbl = lastTap && lastTap.k === k && t - lastTap.t < 380;
     lastTap = dbl ? null : { k, t };
     if (S.inner) {
-      if (h.kind === 'check') { toggleInnerKnown(h.path); return; }
+      if (h.kind === 'check') { qToggleKnown(S.inner.id, h.path); return; }
       if (h.kind === 'fold') { toggleFold(h.path); return; }
       if (h.kind === 'item') { if (dbl) startRenameItem(h.path); else selectInner(h.path); return; }
       selectInner(null); return;
     }
-    if (h.kind === 'knob') return;
+    if (h.kind === 'qcheck') { qToggleKnown(h.id, h.path); return; }
+    if (h.kind === 'q') { if (dbl) dive(h.id, h.path); else selectMapQ(h.id, h.path); return; }
     if (h.kind === 'node') { if (dbl) dive(h.id); else selectNode(h.id); return; }
+    if (h.kind === 'stage') { if (dbl) startRename('stage:' + h.tid); else selectTree(h.tid); return; }
     if (h.kind === 'core') { selectCore(); return; }
     deselect();
-  }
-
-  // connect knob: drag onto a skill to toggle the link, release on empty space to create a skill there
-  function linkTargetAt(e) {
-    const el = document.elementFromPoint(e.clientX, e.clientY);
-    const g = el && el.closest && el.closest('.node');
-    return g && g.dataset.id !== S.sel ? g.dataset.id : null;
-  }
-  function drawLinkLine(e) {
-    const a = S.layout.pos.get(S.sel), w = toWorld(e.clientX, e.clientY);
-    L_LINK.innerHTML = `<path class="link-line" d="M${f1(a.x)},${f1(a.y)} L${f1(w.x)},${f1(w.y)}"/>`;
-    const tid = linkTargetAt(e);
-    $$('.node.link-target', L_NODES).forEach(g => g.classList.remove('link-target'));
-    if (tid) L_NODES.querySelector(`.node[data-id="${CSS.escape(tid)}"]`)?.classList.add('link-target');
-  }
-  function finishLink(e, moved) {
-    L_LINK.innerHTML = '';
-    if (!S.sel || !S.idx.has(S.sel)) return;
-    if (!moved) { addChild(S.sel); return; }
-    const tid = linkTargetAt(e);
-    if (tid) { toggleRequire(tid, S.sel); return; }
-    const w = toWorld(e.clientX, e.clientY);
-    addChild(S.sel, { x: Math.round(w.x), y: Math.round(w.y) });
   }
 
   // ------------------------------------------------------------------ keyboard
@@ -682,6 +726,7 @@
       if (typingTarget(e.target)) { e.target.blur(); svg.focus({ preventScroll: true }); return; }
       if ($$('.menu').some(m => !m.hidden)) { $$('.menu').forEach(m => { m.hidden = true; }); return; }
       if (S.inner) { if (S.inner.sel && S.inner.sel.length) selectInner(S.inner.sel.slice(0, -1)); else exitInner(); return; }
+      if (selKind() === 'q') { const { id, path } = selQ(); selectMapQ(id, path.slice(0, -1)); return; }
       deselect(); return;
     }
     if (mod && (e.key === 'z' || e.key === 'Z' || e.key === 'я' || e.key === 'Я')) {
@@ -701,22 +746,61 @@
     mapKey(e);
   });
 
-  function mapKey(e) {
-    const id = S.sel, isNode = id && S.idx.has(id);
+  // Keys that work on a question both on the map and in the mini map
+  function qKeys(e, id, path) {
     const k = e.key;
-    if (k === 'Tab') { e.preventDefault(); if (id === '__core') addTree(); else if (isNode) addChild(id); else selectCore(); return; }
-    if (k === 'Enter' && (e.ctrlKey || e.metaKey) && isNode) { e.preventDefault(); dive(id); return; }
-    if (k === 'F6' && isNode) { e.preventDefault(); dive(id); return; }
-    if (k === 'Enter') { e.preventDefault(); if (isNode) addSibling(id); else if (id === '__core') addTree(); return; }
-    if ((k === 'F2' || k === ' ') && isNode) { e.preventDefault(); startRenameNode(id); return; }
-    if ((k === 'Delete' || k === 'Backspace') && isNode) { e.preventDefault(); deleteNode(id); return; }
+    if (!path.length || e.ctrlKey || e.metaKey || e.altKey) return false;
+    if (/^[1-4]$/.test(k)) { e.preventDefault(); qSetLevel(id, path, +k); return true; }
+    if (k === '!') { e.preventDefault(); qToggleImp(id, path); return true; }
+    return false;
+  }
+
+  function tabAction() {
+    const kind = selKind();
+    if (kind === 'core') addTree();
+    else if (kind === 'stage') addSection(S.selTree);
+    else if (kind === 'sec') qAddChild(S.sel, []);
+    else if (kind === 'q') { const { id, path } = selQ(); qAddChild(id, path); }
+    else selectCore();
+  }
+  function mapKey(e) {
+    const kind = selKind(), k = e.key;
+    if (kind === 'q' && qKeys(e, selQ().id, selQ().path)) return;
+    if (k === 'Tab') { e.preventDefault(); tabAction(); return; }
+    if ((k === 'F6' || (k === 'Enter' && (e.ctrlKey || e.metaKey))) && (kind === 'sec' || kind === 'q')) {
+      e.preventDefault(); if (kind === 'sec') dive(S.sel); else dive(selQ().id, selQ().path); return;
+    }
+    if (k === 'Enter') {
+      e.preventDefault();
+      if (kind === 'core') addTree();
+      else if (kind === 'stage') addTree(S.selTree);
+      else if (kind === 'sec') addSection(S.idx.get(S.sel).t.id, S.sel);
+      else if (kind === 'q') { const { id, path } = selQ(); qAddSibling(id, path); }
+      return;
+    }
+    if ((k === 'F2' || k === ' ') && kind) { e.preventDefault(); startRename(S.sel); return; }
+    if ((k === 'Delete' || k === 'Backspace') && kind && kind !== 'core') {
+      e.preventDefault();
+      if (kind === 'stage') deleteTree(S.selTree);
+      else if (kind === 'sec') deleteNode(S.sel);
+      else { const { id, path } = selQ(); qDelete(id, path); }
+      return;
+    }
+    if (e.altKey && k.startsWith('Arrow')) {
+      e.preventDefault();
+      const d = k === 'ArrowUp' || k === 'ArrowLeft' ? -1 : 1;
+      if (kind === 'stage' && (k === 'ArrowLeft' || k === 'ArrowRight')) moveTree(S.selTree, d);
+      else if (kind === 'sec' && (k === 'ArrowUp' || k === 'ArrowDown')) moveNode(S.sel, d);
+      else if (kind === 'q' && (k === 'ArrowUp' || k === 'ArrowDown')) { const { id, path } = selQ(); qMove(id, path, d); }
+      return;
+    }
     if (k.startsWith('Arrow')) { e.preventDefault(); navMap(k); return; }
     if (k === '+' || k === '=') { zoomCenter(1.3); return; }
     if (k === '-') { zoomCenter(1 / 1.3); return; }
     if (k === '0') { fitAll(); return; }
     if (k === '?') { showHelp(); return; }
     if (k === '/') { e.preventDefault(); $('#search').focus(); return; }
-    if (isNode && !e.ctrlKey && !e.metaKey && !e.altKey && k.length === 1 && /\p{L}/u.test(k)) { e.preventDefault(); startRenameNode(id, k); }
+    if (kind && !e.ctrlKey && !e.metaKey && !e.altKey && k.length === 1 && /\p{L}/u.test(k)) { e.preventDefault(); startRename(S.sel, k); }
   }
 
   // Arrow keys move the selection to the nearest item in that direction.
@@ -734,13 +818,20 @@
     return best;
   }
   function navMap(key) {
-    const cands = [...S.layout.pos.entries()].map(([id, p]) => ({ key: id, x: p.x, y: p.y }));
-    cands.push({ key: '__core', x: 0, y: 0 });
-    const cur = S.sel && S.sel !== '__core' ? S.layout.pos.get(S.sel) : { x: 0, y: 0 };
-    if (!S.sel) { selectCore(); return; }
+    if (!S.sel || !S.layout.items.has(S.sel)) { selectCore(); return; }
+    const anchor = it => ({ x: it.kind === 'stage' ? it.cx : it.x + Math.min(it.w, 60) / 2, y: it.y + it.h / 2 });
+    const cur = anchor(S.layout.items.get(S.sel));
+    const cands = [...S.layout.items.values()].map(it => ({ it, ...anchor(it) }));
     const b = spatialPick(cur, cands, key);
-    if (!b) return;
-    if (b.key === '__core') selectCore(); else { selectNode(b.key); ensureNodeVisible(b.key); }
+    if (b) selectKey(b.it.key, { keyboard: true });
+  }
+  function selectKey(key, opts = {}) {
+    const kind = selKind(key);
+    if (kind === 'core') selectCore();
+    else if (kind === 'stage') selectTree(key.slice(6), { fly: false });
+    else if (kind === 'sec') selectNode(key);
+    else if (kind === 'q') { const { id, path } = selQ(key); selectMapQ(id, path); }
+    if (opts.keyboard) ensureItemVisible(key);
   }
 
   // ------------------------------------------------------------------ context menu
@@ -751,7 +842,7 @@
     ctx.innerHTML = items.map(it => {
       if (it === '-') return '<hr>';
       ctxActions.push(it.run);
-      return `<button data-i="${ctxActions.length - 1}" class="${it.danger ? 'danger' : ''}"${it.disabled ? ' disabled' : ''}>${esc(it.label)}${it.kbd ? `<span class="kbd-hint">${esc(it.kbd)}</span>` : ''}</button>`;
+      return `<button data-i="${ctxActions.length - 1}" class="${it.danger ? 'danger' : ''}${it.on ? ' active' : ''}"${it.disabled ? ' disabled' : ''}>${it.dot ? `<span class="dot" style="--c:${it.dot}"></span>` : ''}${esc(it.label)}${it.kbd ? `<span class="kbd-hint">${esc(it.kbd)}</span>` : ''}</button>`;
     }).join('');
     ctx.hidden = false;
     const w = ctx.offsetWidth, h = ctx.offsetHeight;
@@ -763,56 +854,84 @@
     const b = e.target.closest('[data-i]'); if (!b) return;
     hideCtx(); ctxActions[+b.dataset.i]?.();
   });
+  function qCtxItems(id, path) {
+    const e = entryAt(S.idx.get(id).n, path), isQ = e && !isTopic(e);
+    const known = isQ && knownSet(id).has(qText(e)), lv = qLevel(e);
+    return [
+      { label: 'Добавить подвопрос', kbd: 'Tab', run: () => qAddChild(id, path) },
+      { label: 'Добавить вопрос рядом', kbd: 'Enter', run: () => qAddSibling(id, path) },
+      { label: 'Переименовать', kbd: 'F2', run: () => (S.inner ? startRenameItem(path) : startRename(qKey(id, path))) },
+      ...(isQ ? [{ label: known ? 'Снять отметку «знаю»' : 'Знаю ответ', run: () => qToggleKnown(id, path) }] : []),
+      '-',
+      ...[1, 2, 3, 4].map(l => ({ label: LEVELS[l].name, kbd: String(l), dot: LEVELS[l].c, on: lv === l, run: () => qSetLevel(id, path, l) })),
+      { label: qImp(e) ? 'Снять «важный»' : 'Отметить важным', kbd: '!', dot: '#e5484d', run: () => qToggleImp(id, path) },
+      '-',
+      { label: 'Выше', kbd: 'Alt ↑', run: () => qMove(id, path, -1) }, { label: 'Ниже', kbd: 'Alt ↓', run: () => qMove(id, path, 1) },
+      '-', { label: isTopic(e) ? 'Удалить подтему' : 'Удалить вопрос', kbd: 'Del', danger: true, run: () => qDelete(id, path) }
+    ];
+  }
   function openContextFor(h, x, y) {
     if (S.inner) {
       if (h.kind === 'empty') {
-        showCtx(x, y, [{ label: 'Новый вопрос', kbd: 'Tab', run: () => innerAddChild([]) }, { label: 'Показать всё', kbd: 'Ctrl 0', run: fitInner }, '-', { label: 'Вернуться к карте', kbd: 'Esc', run: () => exitInner() }]);
+        showCtx(x, y, [{ label: 'Новый вопрос', kbd: 'Tab', run: () => qAddChild(S.inner.id, []) }, { label: 'Показать всё', kbd: 'Ctrl 0', run: fitInner }, '-', { label: 'Вернуться к карте', kbd: 'Esc', run: () => exitInner() }]);
         return;
       }
-      const path = h.path; selectInner(path);
-      const e = path.length ? entryAt(innerNode(), path) : null;
-      const isQ = e && !isTopic(e);
-      const known = isQ && knownSet(S.inner.id).has(qText(e));
-      showCtx(x, y, [
-        { label: path.length ? 'Добавить подвопрос' : 'Добавить вопрос', kbd: 'Tab', run: () => innerAddChild(path) },
-        ...(path.length ? [{ label: 'Добавить вопрос рядом', kbd: 'Enter', run: () => innerAddSibling(path) }] : []),
-        { label: 'Переименовать', kbd: 'F2', run: () => startRenameItem(path) },
-        ...(isQ ? [{ label: known ? 'Снять отметку «знаю»' : 'Знаю ответ', run: () => toggleInnerKnown(path) }] : []),
-        ...(path.length ? ['-', { label: 'Выше', kbd: 'Alt ↑', run: () => innerMove(path, -1) }, { label: 'Ниже', kbd: 'Alt ↓', run: () => innerMove(path, 1) },
-          '-', { label: isTopic(e) ? 'Удалить подтему' : 'Удалить вопрос', kbd: 'Del', danger: true, run: () => innerDelete(path) }] : [])
-      ]);
+      selectInner(h.path);
+      if (!h.path.length) {
+        showCtx(x, y, [{ label: 'Добавить вопрос', kbd: 'Tab', run: () => qAddChild(S.inner.id, []) }, { label: 'Переименовать раздел', kbd: 'F2', run: () => startRenameItem([]) }, '-', { label: 'Вернуться к карте', kbd: 'Esc', run: () => exitInner() }]);
+        return;
+      }
+      showCtx(x, y, qCtxItems(S.inner.id, h.path));
+      return;
+    }
+    if (h.kind === 'q' || h.kind === 'qcheck') {
+      selectMapQ(h.id, h.path);
+      showCtx(x, y, [{ label: 'Открыть в мини-карте', kbd: '2× клик', run: () => dive(h.id, h.path) }, '-', ...qCtxItems(h.id, h.path)]);
       return;
     }
     if (h.kind === 'node') {
-      const id = h.id, n = S.idx.get(id).n, st = nodeState(id);
+      const id = h.id, st = nodeState(id), { t } = S.idx.get(id);
       selectNode(id);
       showCtx(x, y, [
         { label: 'Открыть мини-карту', kbd: '2× клик', run: () => dive(id) },
         '-',
-        { label: 'Следующий навык', kbd: 'Tab', run: () => addChild(id) },
-        { label: 'Соседний навык', kbd: 'Enter', run: () => addSibling(id) },
-        { label: 'Переименовать', kbd: 'F2', run: () => startRenameNode(id) },
-        { label: n.keystone ? 'Сделать обычным' : 'Сделать ключевым', run: () => { pushUndo(); n.keystone = n.keystone ? undefined : true; saveProject(); } },
-        ...(n.pos ? [{ label: 'Вернуть на авторасклад', run: () => { pushUndo(); delete n.pos; saveProject(); } }] : []),
+        { label: 'Добавить вопрос', kbd: 'Tab', run: () => qAddChild(id, []) },
+        { label: 'Раздел рядом', kbd: 'Enter', run: () => addSection(t.id, id) },
+        { label: 'Переименовать', kbd: 'F2', run: () => startRename(id) },
+        { label: 'Выше', kbd: 'Alt ↑', run: () => moveNode(id, -1) }, { label: 'Ниже', kbd: 'Alt ↓', run: () => moveNode(id, 1) },
         '-',
         st === 'mastered' ? { label: 'Сбросить «освоено»', run: () => setState(id, null) }
           : { label: 'Отметить освоенным', run: () => (st === 'locked' ? masterWithPrereqs(id) : setState(id, 'mastered')) },
         ...(st === 'available' ? [{ label: 'Начать изучение', run: () => setState(id, 'learning') }] : []),
         '-',
-        { label: 'Удалить навык', kbd: 'Del', danger: true, run: () => deleteNode(id) }
+        { label: 'Удалить раздел', kbd: 'Del', danger: true, run: () => deleteNode(id) }
+      ]);
+      return;
+    }
+    if (h.kind === 'stage') {
+      const tid = h.tid;
+      selectTree(tid, { fly: false });
+      showCtx(x, y, [
+        { label: 'Добавить раздел', kbd: 'Tab', run: () => addSection(tid) },
+        { label: 'Новая тема после этой', kbd: 'Enter', run: () => addTree(tid) },
+        { label: 'Переименовать', kbd: 'F2', run: () => startRename('stage:' + tid) },
+        { label: 'Левее', kbd: 'Alt ←', run: () => moveTree(tid, -1) }, { label: 'Правее', kbd: 'Alt →', run: () => moveTree(tid, 1) },
+        '-',
+        { label: 'Показать тему целиком', run: () => selectTree(tid) },
+        '-',
+        { label: 'Удалить тему', kbd: 'Del', danger: true, run: () => deleteTree(tid) }
       ]);
       return;
     }
     if (h.kind === 'core') {
       selectCore();
-      showCtx(x, y, [{ label: 'Новая ветка', kbd: 'Tab', run: addTree }, { label: 'Показать всю карту', kbd: '0', run: () => fitAll() }]);
+      showCtx(x, y, [{ label: 'Новая тема в конце', kbd: 'Tab', run: () => addTree() }, { label: 'Переименовать', kbd: 'F2', run: () => startRename('__core') }, { label: 'Показать всю карту', kbd: '0', run: () => fitAll() }]);
       return;
     }
-    const w = toWorld(x, y);
     showCtx(x, y, [
-      { label: 'Новый навык здесь', run: () => addNodeAt(w) },
-      { label: 'Новая ветка', run: addTree },
+      { label: 'Новая тема в конце', run: () => addTree() },
       '-',
+      { label: 'К началу линии', run: () => startView(true) },
       { label: 'Показать всю карту', kbd: '0', run: () => fitAll() },
       { label: 'Отменить', kbd: 'Ctrl Z', disabled: !S.undo.length, run: undo },
       { label: 'Управление', kbd: '?', run: showHelp }
@@ -821,12 +940,12 @@
 
   // ------------------------------------------------------------------ inline rename
   const inl = $('#inlineEdit');
-  let editing = null; // {kind:'node'|'item', id, path, orig, commit(v)}
+  let editing = null; // {box(), align, orig, commit(v), tab?}
   function startInline(target, initial) {
     commitInline();
     editing = target;
     inl.value = initial != null ? initial : target.orig;
-    inl.classList.toggle('left', target.kind === 'item');
+    inl.classList.toggle('left', target.align !== 'center');
     inl.hidden = false;
     positionInline();
     autoGrow();
@@ -835,23 +954,18 @@
   }
   function positionInline() {
     if (!editing) return;
-    const k = S.view.k;
-    if (editing.kind === 'node') {
-      const p = S.layout.pos.get(editing.id), n = S.idx.get(editing.id)?.n;
-      if (!p || !n) return;
-      const s = toScreen(p.x, p.y + nodeR(n) + 6);
-      const w = 220;
+    const b = editing.box(); if (!b) return;
+    const k = S.view.k, s = toScreen(b.x, b.y);
+    if (editing.align === 'center') {
+      const w = Math.max(200, b.w * k + 24);
       inl.style.width = w + 'px';
-      inl.style.left = (s.x - w / 2) + 'px';
-      inl.style.top = s.y + 'px';
+      inl.style.left = (s.x + b.w * k / 2 - w / 2) + 'px';
+      inl.style.top = (s.y + b.h * k / 2 - 17) + 'px';
     } else {
-      const it = S.inner && S.inner.items.find(x => x.key === editing.path.join('.'));
-      if (!it) return;
-      const s = toScreen(it.x, it.y);
-      const w = Math.max(220, it.w * k);
+      const w = Math.max(240, Math.min(420, b.w * k + 24));
       inl.style.width = w + 'px';
-      inl.style.left = (s.x - 4) + 'px';
-      inl.style.top = (s.y - 4) + 'px';
+      inl.style.left = (s.x - 6) + 'px';
+      inl.style.top = (s.y - 6) + 'px';
     }
   }
   function autoGrow() { inl.style.height = 'auto'; inl.style.height = inl.scrollHeight + 2 + 'px'; }
@@ -863,8 +977,7 @@
       e.preventDefault();
       const t = editing; commitInline();
       if (!t) return;
-      if (t.kind === 'node' && S.sel && S.idx.has(S.sel)) addChild(S.sel);
-      else if (t.kind === 'item' && S.inner && S.inner.sel) innerAddChild(S.inner.sel);
+      if (S.inner) { if (S.inner.sel) qAddChild(S.inner.id, S.inner.sel); } else tabAction();
     }
   });
   inl.addEventListener('blur', () => commitInline());
@@ -878,9 +991,19 @@
   }
   function cancelInline() { editing = null; inl.hidden = true; svg.focus({ preventScroll: true }); }
 
-  function startRenameNode(id, initial) {
-    const e = S.idx.get(id); if (!e) return;
-    ensureNodeVisible(id).then(() => startInline({ kind: 'node', id, orig: e.n.title, commit: v => renameNode(id, v) }, initial));
+  // rename anything on the map by its selection key
+  function startRename(key, initial) {
+    const kind = selKind(key); if (!kind) return;
+    const box = () => S.layout && S.layout.items.get(key);
+    let target;
+    if (kind === 'core') target = { box, align: 'center', orig: S.project.center?.title || S.project.title, commit: v => { pushUndo(); S.project.center = { ...(S.project.center || {}), title: v }; saveProject(); } };
+    else if (kind === 'stage') { const tid = key.slice(6); target = { box, align: 'center', orig: treeById(tid).title, commit: v => renameTree(tid, v) }; }
+    else if (kind === 'sec') target = { box, align: 'left', orig: S.idx.get(key).n.title, commit: v => renameNode(key, v) };
+    else {
+      const { id, path } = selQ(key), e = entryAt(S.idx.get(id)?.n, path); if (!e) return;
+      target = { box: () => S.layout && S.layout.items.get(qKey(id, path)), align: 'left', orig: qText(e), commit: v => qRename(id, path, v) };
+    }
+    ensureItemVisible(key).then(() => startInline(target, initial));
   }
 
   // ------------------------------------------------------------------ map editing
@@ -895,6 +1018,7 @@
     for (const t of S.project.trees) for (const n of t.nodes) for (const k of ['requires', 'requiresAny']) if (n[k]) n[k] = n[k].map(x => (x === oldId ? newId : x));
     if (S.progress.nodes[oldId]) { S.progress.nodes[newId] = S.progress.nodes[oldId]; delete S.progress.nodes[oldId]; saveProgress(); }
     if (S.sel === oldId) S.sel = newId;
+    if (S.inner && S.inner.id === oldId) S.inner.id = newId;
     S.fresh.delete(oldId);
     indexProject();
   }
@@ -902,104 +1026,203 @@
     const e = S.idx.get(id); if (!e) return;
     pushUndo();
     e.n.title = title;
-    if (S.fresh.has(id)) {
-      const t = e.t;
-      if (S.fresh.has('tree:' + t.id) && t.nodes.length === 1) {
-        // first name of a new branch names the branch too
-        S.fresh.delete('tree:' + t.id);
-        t.title = title;
-        const tid = uniqueId(slug(title), t.id);
-        t.id = tid;
-        renameNodeId(id, uniqueId(`${tid}.${slug(title)}`));
-      } else renameNodeId(id, uniqueId(`${t.id}.${slug(title)}`));
+    if (S.fresh.has(id)) renameNodeId(id, uniqueId(`${e.t.id}.${slug(title)}`));
+    saveProject();
+    syncHash();
+  }
+  function renameTree(tid, title) {
+    const t = treeById(tid); if (!t) return;
+    pushUndo();
+    t.title = title;
+    if (S.fresh.has('tree:' + tid)) {
+      // the first name of a new topic gives it its id
+      S.fresh.delete('tree:' + tid);
+      t.id = uniqueId(slug(title), tid);
+      if (S.selTree === tid) { S.selTree = t.id; S.sel = 'stage:' + t.id; }
     }
     saveProject();
-    if (S.sel && S.idx.has(S.sel)) syncHash();
-  }
-  function insertAfter(t, n, afterId) {
-    let at = t.nodes.findIndex(x => x.id === afterId);
-    if (at < 0) { t.nodes.push(n); return; }
-    while (at + 1 < t.nodes.length && ((t.nodes[at + 1].requires || []).includes(afterId))) at++;
-    t.nodes.splice(at + 1, 0, n);
   }
   function newNode(t, extra) {
     const id = uniqueId(`${t.id}.new`);
     S.fresh.add(id);
-    return { id, title: 'Новый навык', description: '', ...extra, questions: [] };
+    return { id, title: 'Новый раздел', description: '', ...extra, questions: [] };
   }
-  function addChild(pid, at) {
-    const e = S.idx.get(pid); if (!e) return;
-    pushUndo();
-    const n = newNode(e.t, { requires: [pid] });
-    if (at) n.pos = at;
-    insertAfter(e.t, n, pid);
-    afterAdd(n.id);
-  }
-  function addSibling(id) {
-    const e = S.idx.get(id); if (!e) return;
+  function addSection(tid, afterId) {
+    const t = treeById(tid); if (!t) return;
     pushUndo();
     const extra = {};
-    if (e.n.requires && e.n.requires.length) extra.requires = [...e.n.requires];
-    if (e.n.requiresAny && e.n.requiresAny.length) extra.requiresAny = [...e.n.requiresAny];
-    const n = newNode(e.t, extra);
-    if (e.n.pos) { const p = e.n.pos, len = Math.hypot(p.x, p.y) || 1; n.pos = { x: Math.round(p.x - p.y / len * 130), y: Math.round(p.y + p.x / len * 130) }; }
-    insertAfter(e.t, n, id);
-    afterAdd(n.id);
-  }
-  function addNodeAt(w) {
-    if (!S.project.trees.length) { addTree(); return; }
-    let a = Math.atan2(w.y, w.x);
-    const s = S.layout.sectors.find(x => { let b = a; while (b < x.a0) b += 2 * Math.PI; return b <= x.a1; }) || S.layout.sectors[0];
-    pushUndo();
-    const n = newNode(s.t, {});
-    n.pos = { x: Math.round(w.x), y: Math.round(w.y) };
-    s.t.nodes.push(n);
-    afterAdd(n.id);
-  }
-  function afterAdd(id) {
+    const prev = afterId && S.idx.get(afterId);
+    if (prev && prev.n.requires && prev.n.requires.length) extra.requires = [...prev.n.requires];
+    const n = newNode(t, extra);
+    const at = afterId ? t.nodes.findIndex(x => x.id === afterId) : -1;
+    if (at >= 0) t.nodes.splice(at + 1, 0, n); else t.nodes.push(n);
     saveProject();
-    selectNode(id);
-    startRenameNode(id);
+    selectNode(n.id);
+    startRename(n.id);
   }
-  function addTree() {
+  function addTree(afterTid) {
     pushUndo();
     const used = new Set(S.project.trees.map(t => (t.color || '').toLowerCase()));
     const color = PALETTE.find(c => !used.has(c)) || PALETTE[S.project.trees.length % PALETTE.length];
-    const tid = uniqueId('branch');
-    const nid = `${tid}.start`;
-    S.project.trees.push({ id: tid, title: 'Новая ветка', color, description: '', nodes: [{ id: nid, title: 'Новая ветка', description: '', keystone: true, questions: [] }] });
-    S.fresh.add('tree:' + tid); S.fresh.add(nid);
+    const tid = uniqueId('topic');
+    const t = { id: tid, title: 'Новая тема', color, description: '', nodes: [] };
+    const at = afterTid ? S.project.trees.findIndex(x => x.id === afterTid) : -1;
+    if (at >= 0) S.project.trees.splice(at + 1, 0, t); else S.project.trees.push(t);
+    S.fresh.add('tree:' + tid);
     saveProject();
-    selectNode(nid);
-    ensureNodeVisible(nid).then(() => startRenameNode(nid));
+    selectTree(tid, { fly: false });
+    startRename('stage:' + tid);
   }
   function deleteNode(id) {
     const e = S.idx.get(id); if (!e) return;
     pushUndo();
-    const parent = reqs(e.n)[0] || null;
+    const i = e.t.nodes.indexOf(e.n);
     e.t.nodes = e.t.nodes.filter(n => n.id !== id);
     for (const t of S.project.trees) for (const n of t.nodes) {
       for (const k of ['requires', 'requiresAny']) if (n[k]) { n[k] = n[k].filter(x => x !== id); if (!n[k].length) delete n[k]; }
     }
     S.sel = null;
     saveProject();
-    if (parent && S.idx.has(parent)) selectNode(parent); else { panel.hidden = true; refreshMap(); }
+    const next = e.t.nodes[Math.min(i, e.t.nodes.length - 1)];
+    if (next) selectNode(next.id); else selectTree(e.t.id, { fly: false });
     toast(`Удалено: ${e.n.title}`, 'Ctrl + Z вернёт');
   }
+  function deleteTree(tid) {
+    const t = treeById(tid); if (!t) return;
+    pushUndo();
+    const ids = new Set(t.nodes.map(n => n.id));
+    S.project.trees = S.project.trees.filter(x => x !== t);
+    for (const x of S.project.trees) for (const n of x.nodes) for (const k of ['requires', 'requiresAny']) if (n[k]) { n[k] = n[k].filter(r => !ids.has(r)); if (!n[k].length) delete n[k]; }
+    S.selTree = null; S.sel = null; closePanel(); saveProject();
+    toast(`Тема удалена: ${t.title}`, 'Ctrl + Z вернёт');
+  }
+  function moveNode(id, d) {
+    const e = S.idx.get(id); if (!e) return;
+    const list = e.t.nodes, i = list.indexOf(e.n), j = i + d;
+    if (j < 0 || j >= list.length) return;
+    pushUndo();
+    [list[i], list[j]] = [list[j], list[i]];
+    saveProject(); ensureItemVisible(id);
+  }
+  function moveTree(tid, d) {
+    const list = S.project.trees, i = list.findIndex(t => t.id === tid), j = i + d;
+    if (i < 0 || j < 0 || j >= list.length) return;
+    pushUndo();
+    [list[i], list[j]] = [list[j], list[i]];
+    saveProject(); ensureItemVisible('stage:' + tid);
+  }
   function wouldCycle(id, newReq) { return newReq === id || ancestors(newReq).has(id); }
-  function toggleRequire(id, req) {
-    const n = S.idx.get(id).n;
-    if ((n.requires || []).includes(req) || (n.requiresAny || []).includes(req)) {
-      pushUndo();
-      for (const k of ['requires', 'requiresAny']) if (n[k]) { n[k] = n[k].filter(x => x !== req); if (!n[k].length) delete n[k]; }
-      toast('Связь удалена');
-    } else {
-      if (wouldCycle(id, req)) { toast('Так нельзя', 'Получится замкнутый круг зависимостей'); return; }
-      pushUndo();
-      n.requires = [...(n.requires || []), req];
-      toast('Связь добавлена', `${S.idx.get(req).n.title} → ${n.title}`);
+
+  // ------------------------------------------------------------------ question editing (map and mini map)
+  function entryAt(n, path) {
+    if (!n || !path) return null;
+    let list = n.questions || [], e = null;
+    for (const i of path) { e = list[i]; if (e == null) return null; list = isTopic(e) ? (e.items || []) : []; }
+    return e;
+  }
+  function listAt(n, path) {
+    if (!path.length) return n.questions || (n.questions = []);
+    const e = entryAt(n, path);
+    return isTopic(e) ? (e.items || (e.items = [])) : null;
+  }
+  function setEntry(n, path, v) { listAt(n, path.slice(0, -1))[path[path.length - 1]] = v; }
+  function uniqueQ(n, base = 'Новый вопрос') {
+    const have = new Set(flatQ(n.questions).map(x => x.q));
+    let q = base, i = 2; while (have.has(q)) q = `${base} ${i++}`;
+    return q;
+  }
+  // select a question wherever the user is (mini map or map), optionally start renaming it
+  function focusQ(id, path, rename) {
+    if (S.inner && S.inner.id === id) { selectInner(path, { keyboard: true }); if (rename) startRenameItem(path); return; }
+    selectMapQ(id, path);
+    if (rename) startRename(path.length ? qKey(id, path) : id);
+  }
+  function qAddChild(id, path) {
+    const n = S.idx.get(id)?.n; if (!n) return;
+    pushUndo();
+    let newPath;
+    if (!path.length) { n.questions = n.questions || []; n.questions.push(uniqueQ(n)); newPath = [n.questions.length - 1]; }
+    else {
+      let e = entryAt(n, path); if (e == null) return;
+      if (!isTopic(e)) {
+        const topic = { topic: qText(e), items: [] };
+        if (qLevel(e)) topic.level = qLevel(e);
+        if (qImp(e)) topic.important = true;
+        if (qAns(e)) topic.items.push({ q: 'Ответ', a: qAns(e) });
+        setEntry(n, path, topic); e = topic;
+        toast('Вопрос стал подтемой', 'Ctrl + Z вернёт');
+      }
+      e.items.push(uniqueQ(n));
+      if (S.inner) S.inner.collapsed.delete(path.join('.'));
+      newPath = [...path, e.items.length - 1];
     }
     saveProject();
+    focusQ(id, newPath, true);
+  }
+  function qAddSibling(id, path) {
+    const n = S.idx.get(id)?.n; if (!n) return;
+    if (!path.length) { qAddChild(id, []); return; }
+    pushUndo();
+    const list = listAt(n, path.slice(0, -1)), i = path[path.length - 1];
+    list.splice(i + 1, 0, uniqueQ(n));
+    saveProject();
+    focusQ(id, [...path.slice(0, -1), i + 1], true);
+  }
+  function qDelete(id, path) {
+    const n = S.idx.get(id)?.n; if (!n || !path.length) return;
+    pushUndo();
+    const list = listAt(n, path.slice(0, -1)), i = path[path.length - 1];
+    const [gone] = list.splice(i, 1);
+    saveProject();
+    focusQ(id, list.length ? [...path.slice(0, -1), Math.min(i, list.length - 1)] : path.slice(0, -1));
+    toast(isTopic(gone) ? `Подтема удалена: ${gone.topic}` : 'Вопрос удалён', 'Ctrl + Z вернёт');
+  }
+  function qMove(id, path, d) {
+    const n = S.idx.get(id)?.n; if (!n || !path.length) return;
+    const list = listAt(n, path.slice(0, -1)), i = path[path.length - 1], j = i + d;
+    if (j < 0 || j >= list.length) return;
+    pushUndo();
+    [list[i], list[j]] = [list[j], list[i]];
+    saveProject();
+    focusQ(id, [...path.slice(0, -1), j]);
+  }
+  function qRename(id, path, v) {
+    const n = S.idx.get(id)?.n, e = entryAt(n, path); if (!e) return;
+    pushUndo();
+    if (isTopic(e)) e.topic = v;
+    else { const old = qText(e); if (typeof e === 'string') setEntry(n, path, v); else e.q = v; renameKnown(id, old, v); }
+    saveProject();
+  }
+  function qSetLevel(id, path, l) {
+    const n = S.idx.get(id)?.n, e = entryAt(n, path); if (!e) return;
+    pushUndo();
+    const o = asObj(e);
+    if (o.level === l) delete o.level; else o.level = l;
+    setEntry(n, path, isTopic(o) ? o : tidyQ(o));
+    saveProject();
+  }
+  function qToggleImp(id, path) {
+    const n = S.idx.get(id)?.n, e = entryAt(n, path); if (!e) return;
+    pushUndo();
+    const o = asObj(e);
+    if (o.important) delete o.important; else o.important = true;
+    setEntry(n, path, isTopic(o) ? o : tidyQ(o));
+    saveProject();
+  }
+  function qToggleKnown(id, path) {
+    const e = entryAt(S.idx.get(id)?.n, path); if (!e || isTopic(e)) return;
+    const q = qText(e);
+    if (S.inner) S.inner.sel = path;
+    toggleKnown(id, q, !knownSet(id).has(q));
+  }
+  function saveAnswer(id, path, text) {
+    const n = S.idx.get(id)?.n, e = entryAt(n, path); if (!e || isTopic(e)) return;
+    const v = String(text).trim();
+    if (v === qAns(e)) return;
+    pushUndo();
+    setEntry(n, path, tidyQ({ ...asObj(e), a: v }));
+    saveProject();
+    toast(v ? 'Ответ сохранён' : 'Ответ удалён');
   }
 
   // ------------------------------------------------------------------ progress actions
@@ -1013,7 +1236,7 @@
     const opened = [...S.idx.keys()].filter(x => nodeState(x) !== 'locked' && !before.has(x));
     if (s === 'mastered') {
       burst(id);
-      toast(`Освоено: ${S.idx.get(id).n.title}`, opened.length ? `Открыто новых навыков: ${opened.length}` : '');
+      toast(`Освоено: ${S.idx.get(id).n.title}`, opened.length ? `Открыто новых разделов: ${opened.length}` : '');
     }
     afterProgress(lvlBefore);
   }
@@ -1022,7 +1245,7 @@
     let c = 0;
     for (const x of [...ancestors(id), id]) if (!isMastered(x)) { const p = S.progress.nodes[x] || (S.progress.nodes[x] = {}); p.s = 'mastered'; p.t = now(); c++; }
     saveProgress(); burst(id);
-    toast(`Освоено навыков: ${c}`, 'Вместе со всеми требованиями');
+    toast(`Освоено разделов: ${c}`, 'Вместе со всеми требованиями');
     afterProgress(lvlBefore);
   }
   function setTreeState(treeId, mastered) {
@@ -1032,7 +1255,7 @@
       if (mastered) { const p = S.progress.nodes[n.id] || (S.progress.nodes[n.id] = {}); if (p.s !== 'mastered') { p.s = 'mastered'; p.t = now(); } } else delete S.progress.nodes[n.id];
     }
     saveProgress();
-    if (mastered) toast(`Ветка «${t.title}» отмечена изученной`);
+    if (mastered) toast(`Тема «${t.title}» отмечена изученной`);
     afterProgress(lvlBefore);
   }
   function toggleKnown(id, q, on) {
@@ -1085,6 +1308,10 @@
   }
   function renderLegend() {
     let total = 0, done = 0;
+    const cnt = { 1: 0, 2: 0, 3: 0, 4: 0, imp: 0 };
+    S.idx.forEach((_, id) => sectionQs(id).forEach(x => { if (x.level) cnt[x.level]++; if (x.important) cnt.imp++; }));
+    $('#levelKey').innerHTML = [1, 2, 3, 4].map(l => `<button class="lk${S.qf === l ? ' on' : ''}" data-lf="${l}" style="--lc:${LEVELS[l].c}" title="Показать только: ${LEVELS[l].name}"><i></i>${LEVELS[l].name}<span class="mono">${cnt[l]}</span></button>`).join('')
+      + `<button class="lk imp${S.qf === 'imp' ? ' on' : ''}" data-lf="imp" style="--lc:#e5484d" title="Показать только важные"><b>!</b>Важные<span class="mono">${cnt.imp}</span></button>`;
     $('#legendList').innerHTML = S.project.trees.map(t => {
       const m = t.nodes.filter(n => isMastered(n.id)).length;
       total += t.nodes.length; done += m;
@@ -1096,6 +1323,7 @@
     $('#legendTotal').textContent = `${done}/${total}`;
   }
   $('#legendList').addEventListener('click', e => { const b = e.target.closest('[data-tree]'); if (b) selectTree(b.dataset.tree); });
+  $('#levelKey').addEventListener('click', e => { const b = e.target.closest('[data-lf]'); if (b) setQFilter(b.dataset.lf === 'imp' ? 'imp' : +b.dataset.lf); });
   $('#legendToggle').addEventListener('click', () => {
     const l = $('#legend'); l.classList.toggle('collapsed');
     $('#legendToggle').setAttribute('aria-expanded', String(!l.classList.contains('collapsed')));
@@ -1105,6 +1333,7 @@
     const z = e.target.closest('[data-zoom]'); if (!z) return;
     const a = z.dataset.zoom;
     if (a === 'fit') S.inner ? fitInner() : fitAll();
+    else if (a === 'start') { if (S.inner) exitInner(); else startView(true); }
     else if (a === 'in') zoomCenter(1.3);
     else if (a === 'out') zoomCenter(1 / 1.3);
     else if (a === 'undo') undo();
@@ -1114,10 +1343,13 @@
   function renderHint() {
     const h = $('#hint');
     const k = (key, what) => `<b>${key}</b> ${what}`;
-    if (S.inner) h.innerHTML = [k('Tab', 'подвопрос'), k('Enter', 'вопрос рядом'), k('F2', 'переименовать'), k('Del', 'удалить'), k('клик по кружку', 'знаю'), k('Esc', 'к карте')].join('   ·   ');
-    else if (S.sel === '__core') h.innerHTML = [k('Tab', 'новая ветка'), k('стрелки', 'к навыкам'), k('?', 'все клавиши')].join('   ·   ');
-    else if (S.sel && S.idx.has(S.sel)) h.innerHTML = [k('2× клик', 'мини-карта'), k('Tab', 'следующий'), k('Enter', 'соседний'), k('F2', 'переименовать'), k('Del', 'удалить'), k('тяни ⊕', 'связать')].join('   ·   ');
-    else h.innerHTML = [k('клик', 'выбрать'), k('2× клик', 'внутрь навыка'), k('колесо', 'прокрутка'), k('Ctrl + колесо', 'масштаб'), k('правый клик', 'меню'), k('?', 'клавиши')].join('   ·   ');
+    const kind = selKind();
+    if (S.inner) h.innerHTML = [k('Tab', 'подвопрос'), k('Enter', 'вопрос рядом'), k('1–4', 'сложность'), k('!', 'важный'), k('F2', 'переименовать'), k('Esc', 'к карте')].join('   ·   ');
+    else if (kind === 'core') h.innerHTML = [k('Tab', 'новая тема'), k('→', 'к темам'), k('?', 'все клавиши')].join('   ·   ');
+    else if (kind === 'stage') h.innerHTML = [k('Tab', 'раздел'), k('Enter', 'тема рядом'), k('F2', 'переименовать'), k('Alt ← →', 'переставить'), k('Del', 'удалить')].join('   ·   ');
+    else if (kind === 'sec') h.innerHTML = [k('2× клик', 'мини-карта'), k('Tab', 'вопрос'), k('Enter', 'раздел рядом'), k('F2', 'переименовать'), k('Del', 'удалить')].join('   ·   ');
+    else if (kind === 'q') h.innerHTML = [k('Tab', 'подвопрос'), k('Enter', 'вопрос рядом'), k('1–4', 'сложность'), k('!', 'важный'), k('F2', 'переименовать'), k('Del', 'удалить')].join('   ·   ');
+    else h.innerHTML = [k('клик', 'выбрать'), k('кружок', 'знаю'), k('2× клик', 'мини-карта'), k('колесо', 'прокрутка'), k('Ctrl + колесо', 'масштаб'), k('?', 'клавиши')].join('   ·   ');
   }
 
   // ------------------------------------------------------------------ selection + panel
@@ -1132,9 +1364,11 @@
     const st = panel.scrollTop;
     const openDetails = !!panelBody.querySelector('details.edit[open]');
     if (S.inner && panelKind && panelKind.startsWith('inner')) renderInnerPanel();
-    else if (panelKind === 'node' && S.sel && S.idx.has(S.sel)) renderNodePanel(S.sel);
+    else if (panelKind === 'node' && S.idx.has(S.sel)) renderNodePanel(S.sel);
+    else if (panelKind === 'q' && selKind() === 'q' && entryAt(S.idx.get(selQ().id)?.n, selQ().path)) renderQPanel(selQ().id, selQ().path);
     else if (panelKind === 'tree' && S.selTree && treeById(S.selTree)) renderTreePanel(S.selTree);
     else if (panelKind === 'project') renderProjectPanel();
+    else closePanel();
     if (openDetails) { const d = panelBody.querySelector('details.edit'); if (d) d.open = true; }
     panel.scrollTop = st;
   }
@@ -1144,44 +1378,50 @@
       if (h !== location.hash) history.replaceState(null, '', h || location.pathname + location.search);
     } catch (e) { /* sandboxed */ }
   }
+  function afterSelect() { syncHash(); markSel(); renderLegend(); renderHint(); }
   function selectNode(id, opts = {}) {
     if (!S.idx.has(id)) return;
     S.sel = id; S.selTree = null;
-    syncHash();
     renderNodePanel(id);
-    refreshMap(); renderLegend(); renderHint();
-    if (opts.fly) flyTo(S.layout.pos.get(id).x, S.layout.pos.get(id).y, Math.max(S.view.k, 0.85));
+    afterSelect();
+    if (opts.fly) { const p = S.layout.pos.get(id), it = S.layout.items.get(id); flyTo(p.x + Math.min(it.w / 2 + 160, viewport().w / 4), p.y, Math.max(S.view.k, 0.85)); }
+  }
+  function selectMapQ(id, path, opts = {}) {
+    if (!path.length) { selectNode(id, opts); return; }
+    if (!entryAt(S.idx.get(id)?.n, path)) return;
+    S.sel = qKey(id, path); S.selTree = null;
+    renderQPanel(id, path);
+    afterSelect();
+    if (opts.fly) { const it = S.layout.items.get(S.sel); if (it) flyTo(it.x + Math.min(it.w, 300) / 2, it.y + it.h / 2, Math.max(S.view.k, 0.95)); }
   }
   function selectCore() {
-    S.sel = '__core'; S.selTree = null; syncHash();
-    renderProjectPanel(); refreshMap(); renderLegend(); renderHint();
+    S.sel = '__core'; S.selTree = null;
+    renderProjectPanel(); afterSelect();
   }
   function deselect() {
-    S.sel = null; S.selTree = null; syncHash();
-    closePanel(); refreshMap(); renderLegend(); renderHint();
+    S.sel = null; S.selTree = null;
+    closePanel(); afterSelect();
   }
-  function selectTree(tid) {
+  function selectTree(tid, opts = {}) {
     const t = treeById(tid); if (!t) return;
     if (S.inner) leaveInnerInstant();
-    S.selTree = tid; S.sel = null; syncHash();
-    renderTreePanel(tid); refreshMap(); renderLegend(); renderHint();
-    const pts = t.nodes.map(n => S.layout.pos.get(n.id)).filter(Boolean);
-    if (pts.length) {
-      const xs = pts.map(p => p.x), ys = pts.map(p => p.y), b = viewport();
-      const w = Math.max(...xs) - Math.min(...xs) + 320, h = Math.max(...ys) - Math.min(...ys) + 320;
-      flyTo((Math.max(...xs) + Math.min(...xs)) / 2, (Math.max(...ys) + Math.min(...ys)) / 2, clamp(Math.min(b.w / w, (b.h - 60) / h), 0.18, 1));
-    }
+    S.selTree = tid; S.sel = 'stage:' + tid;
+    renderTreePanel(tid); afterSelect();
+    const st = S.layout.items.get('stage:' + tid);
+    if (opts.fly !== false && st) flyToBox(st.box, 0.9);
   }
 
   const STATE_LABEL = { locked: 'Закрыт', available: 'Доступен', learning: 'Изучаю', mastered: 'Освоен' };
   function badge(id, big) {
     const { n, t } = S.idx.get(id);
-    return `<span class="badge${n.keystone ? ' ks' : ''}${isMastered(id) ? ' done' : ''}${big ? ' big' : ''}" style="--c:${esc(t.color)}"><span>${esc(abbrOf(n))}</span></span>`;
+    return `<span class="badge${isMastered(id) ? ' done' : ''}${big ? ' big' : ''}" style="--c:${esc(t.color)}"><span>${esc(abbrOf(n))}</span></span>`;
   }
   function chip(id) {
     const e = S.idx.get(id); if (!e) return `<span class="link-chip missing">${esc(id)}</span>`;
     return `<button class="link-chip${isMastered(id) ? ' done' : ''}" data-goto="${esc(id)}" style="--c:${esc(e.t.color)}"><span class="dot"></span>${esc(e.n.title)}</button>`;
   }
+  const levelTag = l => (LEVELS[l] ? `<span class="tag lvl" style="--lc:${LEVELS[l].c}"><i></i>${LEVELS[l].name}</span>` : '');
+  const impMark = '<span class="imp-mark" title="Важный">!</span>';
   function claudeUrl(text) { return 'https://claude.ai/new?q=' + encodeURIComponent(text); }
   function askPrompt(node, q) {
     return `Я повторяю тему «${node.title}». Кратко и по делу (до 150 слов) ответь на вопрос: ${q}. Если уместно, добавь маленький пример кода.`;
@@ -1190,7 +1430,7 @@
 
   function questionListHtml(id) {
     const { n, t } = S.idx.get(id);
-    const known = knownSet(id), flat = flatQ(n.questions);
+    const known = knownSet(id), flat = sectionQs(id);
     const groups = [];
     flat.forEach((x, i) => {
       let g = groups[groups.length - 1];
@@ -1201,9 +1441,9 @@
       : (S.sample ? `<button class="ask" data-ask="${x.i}">спросить Claude</button>` : `<a class="ask" href="${esc(claudeUrl(askPrompt(n, x.q)))}" target="_blank" rel="noopener">спросить Claude ↗</a>`);
     return groups.map(g => `<div class="qgroup" style="--c:${esc(t.color)}">
       ${g.name ? `<p class="qg-title"><span>${esc(g.name)}</span><span class="mono">${g.items.filter(x => known.has(x.q)).length}/${g.items.length}</span></p>` : ''}
-      <ul class="qlist">${g.items.map(x => `<li class="q${known.has(x.q) ? ' known' : ''}">
+      <ul class="qlist">${g.items.map(x => `<li class="q${known.has(x.q) ? ' known' : ''}"${x.level ? ` style="--lc:${levelColor(x.level)}"` : ''}>
         <input type="checkbox" id="q-${x.i}" data-q="${x.i}" ${known.has(x.q) ? 'checked' : ''}>
-        <label for="q-${x.i}">${esc(x.q)}</label>${askBtn(x)}
+        <label for="q-${x.i}">${x.important ? impMark : ''}${esc(x.q)}</label>${askBtn(x)}
         <div class="ans" data-ans-box="${x.i}" hidden>${esc(x.a)}</div></li>`).join('')}</ul></div>`).join('');
   }
 
@@ -1232,12 +1472,12 @@
     openPanel(inInner ? 'inner-root' : 'node', `
       <div class="p-head">${badge(id, true)}
         <div><h2 class="p-title">${esc(n.title)}</h2>
-          <div class="p-sub"><span class="tag tree" style="--c:${esc(t.color)}">${esc(t.title)}</span><span class="tag st-${st}">${STATE_LABEL[st]}</span>${n.keystone ? '<span class="tag">Ключевой</span>' : ''}</div></div>
+          <div class="p-sub"><button class="tag tree" data-goto-tree="${esc(t.id)}" style="--c:${esc(t.color)}">${esc(t.title)}</button><span class="tag st-${st}">${STATE_LABEL[st]}</span>${levelTag(n.level || t.level)}</div></div>
       </div>
       ${n.description ? `<p class="p-desc">${esc(n.description)}</p>` : ''}
       ${actions}
       <div id="confirmSlot"></div>
-      ${inInner ? '' : `<button class="dive-card" data-act="dive" style="--c:${esc(t.color)}">${icon('dive')}<span><b>Мини-карта навыка</b><small>${total ? `${known} из ${total} вопросов знаю` : 'Добавь вопросы и подтемы'}</small></span><span class="kbd">2× клик</span></button>`}
+      ${inInner ? '' : `<button class="dive-card" data-act="dive" style="--c:${esc(t.color)}">${icon('dive')}<span><b>Мини-карта раздела</b><small>${total ? `${known} из ${total} вопросов знаю` : 'Добавь вопросы и подтемы'}</small></span><span class="kbd">2× клик</span></button>`}
       ${total ? `<div style="--c:${esc(t.color)}"><p class="sec-title"><span>Вопросы</span><span class="mono">${known}/${total}</span></p>
         <div class="progress"><i style="width:${Math.round(100 * known / total)}%"></i></div>
         <div style="margin-top:10px">${questionListHtml(id)}</div></div>` : ''}
@@ -1250,26 +1490,29 @@
     bindNodeEditor(id);
   }
 
+  const levelOptions = cur => `<option value="">Не задана</option>${[1, 2, 3, 4].map(l => `<option value="${l}"${cur === l ? ' selected' : ''}>${LEVELS[l].name}</option>`).join('')}`;
   function nodeEditorHtml(id) {
     const { n, t } = S.idx.get(id);
     const chips = (list, kind) => (list || []).map(r => `<span class="link-chip" style="--c:${esc(S.idx.get(r)?.t.color || '#666')}"><span class="dot"></span>${esc(S.idx.get(r)?.n.title || r)}<button type="button" data-rm="${kind}" data-v="${esc(r)}" title="Убрать">${icon('close', 'sm')}</button></span>`).join('');
-    return `<details class="edit"><summary>Изменить навык</summary>
+    return `<details class="edit"><summary>Изменить раздел</summary>
       <form class="form" id="nodeForm">
         <div class="field-row">
           <label class="field"><span>Название</span><input id="f-title" value="${esc(n.title)}" required></label>
           <label class="field"><span>Метка</span><input id="f-abbr" value="${esc(n.abbr || '')}" maxlength="5" placeholder="${esc(autoAbbr(n.title))}"></label>
         </div>
         <label class="field"><span>Описание</span><textarea id="f-desc">${esc(n.description || '')}</textarea></label>
-        <label class="field"><span>Ветка</span><select id="f-tree">${S.project.trees.map(x => `<option value="${esc(x.id)}"${x.id === t.id ? ' selected' : ''}>${esc(x.title)}</option>`).join('')}</select></label>
-        <label class="check"><input type="checkbox" id="f-ks" ${n.keystone ? 'checked' : ''}> Ключевой навык: крупнее и даёт больше опыта</label>
+        <div class="field-row even">
+          <label class="field"><span>Тема</span><select id="f-tree">${S.project.trees.map(x => `<option value="${esc(x.id)}"${x.id === t.id ? ' selected' : ''}>${esc(x.title)}</option>`).join('')}</select></label>
+          <label class="field"><span>Сложность раздела</span><select id="f-level">${levelOptions(n.level || null)}</select></label>
+        </div>
         <div class="field"><span>Требует (все)</span><div class="chips-edit">${chips(n.requires, 'requires')}</div>
           <input list="nodeIds" id="f-addreq" placeholder="Добавить: начни вводить название"></div>
         <div class="field"><span>Требует любой из</span><div class="chips-edit">${chips(n.requiresAny, 'requiresAny')}</div>
           <input list="nodeIds" id="f-addany" placeholder="Добавить альтернативу"></div>
         <label class="field"><span>Материалы: «название | ссылка» на строку</span><textarea id="f-res">${esc((n.resources || []).map(r => `${r.title || ''} | ${r.url}`).join('\n'))}</textarea></label>
         <datalist id="nodeIds">${[...S.idx.values()].filter(x => x.n.id !== id).map(x => `<option value="${esc(x.n.title)}">${esc(x.t.title)}</option>`).join('')}</datalist>
-        <div class="p-actions"><button class="btn primary" type="submit">Сохранить</button>${n.pos ? '<button class="btn" type="button" data-ed="unpin">Вернуть на авторасклад</button>' : ''}<button class="btn danger" type="button" data-ed="delete">Удалить</button></div>
-        <p class="small muted" style="margin:0">Вопросы и подтемы правятся в мини-карте навыка. На карте: Tab добавляет следующий навык, F2 переименовывает, Delete удаляет.</p>
+        <div class="p-actions"><button class="btn primary" type="submit">Сохранить</button><button class="btn danger" type="button" data-ed="delete">Удалить</button></div>
+        <p class="small muted" style="margin:0">Вопросы правятся прямо на карте или в мини-карте раздела: Tab добавляет вопрос, F2 переименовывает, цифры 1–4 задают сложность.</p>
       </form></details>`;
   }
   function bindNodeEditor(id) {
@@ -1278,15 +1521,14 @@
     form.addEventListener('submit', e => {
       e.preventDefault();
       pushUndo();
-      const title = $('#f-title').value.trim() || n.title;
-      n.title = title;
+      n.title = $('#f-title').value.trim() || n.title;
       const ab = $('#f-abbr').value.trim(); if (ab) n.abbr = ab; else delete n.abbr;
       n.description = $('#f-desc').value.trim();
-      if ($('#f-ks').checked) n.keystone = true; else delete n.keystone;
+      const lv = +$('#f-level').value; if (lv) n.level = lv; else delete n.level;
       n.resources = $('#f-res').value.split('\n').map(s => s.trim()).filter(Boolean).map(l => { const [a, b] = l.split('|').map(x => x.trim()); return b ? { title: a, url: b } : { title: a, url: a }; });
       if (!n.resources.length) delete n.resources;
       const nt = $('#f-tree').value;
-      if (nt !== t.id) { t.nodes.splice(t.nodes.indexOf(n), 1); treeById(nt).nodes.push(n); delete n.pos; }
+      if (nt !== t.id) { t.nodes.splice(t.nodes.indexOf(n), 1); treeById(nt).nodes.push(n); }
       saveProject(); toast('Сохранено');
     });
     const findId = v => { v = v.trim(); if (S.idx.has(v)) return v; for (const [k, x] of S.idx) if (x.n.title === v) return k; return null; };
@@ -1302,18 +1544,59 @@
       const rm = e.target.closest('[data-rm]');
       if (rm) { pushUndo(); const k = rm.dataset.rm; n[k] = (n[k] || []).filter(x => x !== rm.dataset.v); if (!n[k].length) delete n[k]; saveProject(); return; }
       const ed = e.target.closest('[data-ed]'); if (!ed) return;
-      if (ed.dataset.ed === 'unpin') { pushUndo(); delete n.pos; saveProject(); }
       if (ed.dataset.ed === 'delete') { if (S.inner) leaveInnerInstant(); deleteNode(id); }
     });
+  }
+
+  // a question or subtopic, on the map or in the mini map
+  function renderQPanel(id, path) {
+    const { n, t } = S.idx.get(id);
+    const e = entryAt(n, path); if (!e) return;
+    const inner = !!S.inner;
+    const known = knownSet(id);
+    let inh = n.level || t.level || null;
+    const crumbs = [];
+    for (let i = 1; i < path.length; i++) {
+      const x = entryAt(n, path.slice(0, i));
+      if (isTopic(x)) { inh = qLevel(x) || inh; crumbs.push(`<button class="link-chip" data-act="q-select" data-path="${path.slice(0, i).join('.')}" style="--c:${esc(t.color)}">${esc(x.topic)}</button>`); }
+    }
+    const own = qLevel(e), eff = own || inh;
+    const head = `<div class="p-head">${badge(id)}<div><div class="p-sub" style="margin:0 0 4px"><button class="tag tree" data-act="q-select" data-path="" style="--c:${esc(t.color)}">${esc(n.title)}</button></div></div></div>
+      ${crumbs.length ? `<div class="links">${crumbs.join('')}</div>` : ''}`;
+    const marks = `<div class="lvl-pick">${[1, 2, 3, 4].map(l => `<button class="${eff === l ? (own ? 'on' : 'inh') : ''}" data-act="q-level" data-l="${l}" style="--lc:${LEVELS[l].c}" title="Клавиша ${l}"><i></i>${LEVELS[l].name}</button>`).join('')}
+      <button class="imp-btn${qImp(e) ? ' on' : ''}" data-act="q-imp" title="Клавиша !"><b>!</b>Важный</button></div>`;
+    const tools = `<div class="p-actions"><button class="btn small" data-act="q-child">Подвопрос <span class="kbd">Tab</span></button><button class="btn small" data-act="q-sibling">Рядом <span class="kbd">Enter</span></button><button class="btn small" data-act="q-rename">Переименовать <span class="kbd">F2</span></button><button class="btn small danger" data-act="q-delete">Удалить</button></div>
+      ${inner ? '' : `<button class="dive-card" data-act="q-dive" style="--c:${esc(t.color)}">${icon('dive')}<span><b>Открыть в мини-карте</b><small>${esc(n.title)}</small></span><span class="kbd">2× клик</span></button>`}`;
+    if (isTopic(e)) {
+      const fl = flatQ(e.items), k = fl.filter(x => known.has(x.q)).length;
+      openPanel(inner ? 'inner-topic' : 'q', `${head}
+        <h2 class="p-title">${esc(e.topic)}</h2>
+        ${marks}
+        <div style="--c:${esc(t.color)}"><p class="sec-title"><span>Подтема</span><span class="mono">${k}/${fl.length}</span></p><div class="progress"><i style="width:${fl.length ? Math.round(100 * k / fl.length) : 0}%"></i></div></div>
+        <div class="links">${(e.items || []).map((x, i) => `<button class="link-chip${!isTopic(x) && known.has(qText(x)) ? ' done' : ''}" data-act="q-select" data-path="${[...path, i].join('.')}" style="--c:${esc(t.color)}"><span class="dot"></span>${esc(qText(x).length > 60 ? qText(x).slice(0, 58) + '…' : qText(x))}</button>`).join('')}</div>
+        ${tools}`);
+      return;
+    }
+    const q = qText(e), a = qAns(e), isK = known.has(q);
+    openPanel(inner ? 'inner-q' : 'q', `${head}
+      <h2 class="p-title q"${eff ? ` style="color:${levelColor(eff)}"` : ''}>${qImp(e) ? impMark : ''}${esc(q)}</h2>
+      ${marks}
+      <div class="p-actions"><button class="btn ${isK ? 'good' : 'primary'}" data-act="q-known">${isK ? 'Знаю ✓' : 'Знаю ответ'}</button>
+        ${a ? '' : `<button class="btn" data-act="q-ask">${S.sample ? 'Спросить Claude' : 'Спросить Claude ↗'}</button>`}</div>
+      <div style="--c:${esc(t.color)}">${a ? `<p class="sec-title">Ответ</p><div class="answer-box" id="qAnswer">${esc(a)}</div>` : '<div class="answer-box" id="qAnswer" hidden></div>'}</div>
+      <label class="field"><span>${a ? 'Изменить ответ' : 'Записать свой ответ'}</span><textarea id="qAnsEdit" class="notes" placeholder="Коротко, своими словами">${esc(a)}</textarea></label>
+      ${tools}`);
   }
 
   panelBody.addEventListener('click', e => {
     const go = e.target.closest('[data-goto]');
     if (go) { if (S.inner) leaveInnerInstant(); selectNode(go.dataset.goto, { fly: true }); return; }
+    const gt = e.target.closest('[data-goto-tree]');
+    if (gt) { selectTree(gt.dataset.gotoTree); return; }
     const act = e.target.closest('[data-act]');
     const nodeId = S.inner ? S.inner.id : S.sel;
     if (act) {
-      const a = act.dataset.act;
+      const a = act.dataset.act, cq = curQ();
       if (a === 'dive') dive(nodeId);
       else if (a === 'learn') setState(nodeId, 'learning');
       else if (a === 'master') setState(nodeId, 'mastered');
@@ -1323,19 +1606,23 @@
         confirmIn(`Отметить «${S.idx.get(nodeId).n.title}» и все требования (${cnt}) как изученные?`, 'Отметить', () => masterWithPrereqs(nodeId), false);
       } else if (a === 'ask-reset') confirmIn('Сбросить отметку «освоено»? Отметки вопросов и заметки останутся.', 'Сбросить', () => setState(nodeId, null));
       else if (a === 'quiz-node') openQuiz({ node: nodeId });
-      else if (a === 'tree-master') confirmIn(`Отметить всю ветку «${treeById(S.selTree).title}» изученной?`, 'Отметить', () => setTreeState(S.selTree, true), false);
-      else if (a === 'tree-reset') confirmIn('Сбросить прогресс всей ветки?', 'Сбросить', () => setTreeState(S.selTree, false));
+      else if (a === 'tree-master') confirmIn(`Отметить всю тему «${treeById(S.selTree).title}» изученной?`, 'Отметить', () => setTreeState(S.selTree, true), false);
+      else if (a === 'tree-reset') confirmIn('Сбросить прогресс всей темы?', 'Сбросить', () => setTreeState(S.selTree, false));
       else if (a === 'tree-quiz') openQuiz({ tree: S.selTree });
-      else if (a === 'tree-add') { const t = treeById(S.selTree); pushUndo(); const n = newNode(t, {}); t.nodes.push(n); afterAdd(n.id); }
+      else if (a === 'tree-add') addSection(S.selTree);
       else if (a === 'add-tree') addTree();
-      else if (a === 'q-known') toggleInnerKnown(S.inner.sel);
-      else if (a === 'q-ask') { const box = $('#qAnswer'); askClaude(innerNode(), qText(entryAt(innerNode(), S.inner.sel)), box, true); }
-      else if (a === 'q-child') innerAddChild(S.inner.sel);
-      else if (a === 'q-sibling') innerAddSibling(S.inner.sel);
-      else if (a === 'q-rename') startRenameItem(S.inner.sel);
-      else if (a === 'q-delete') innerDelete(S.inner.sel);
-      else if (a === 'q-select') selectInner(act.dataset.path ? parsePath(act.dataset.path) : []);
-      else if (a === 'save-answer') saveAnswer(S.inner.sel, act.dataset.text || $('#qAnswer')?.textContent || '');
+      else if (!cq) return;
+      else if (a === 'q-known') qToggleKnown(cq.id, cq.path);
+      else if (a === 'q-ask') { const box = $('#qAnswer'); askClaude(S.idx.get(cq.id).n, qText(entryAt(S.idx.get(cq.id).n, cq.path)), box, true); }
+      else if (a === 'q-child') qAddChild(cq.id, cq.path);
+      else if (a === 'q-sibling') qAddSibling(cq.id, cq.path);
+      else if (a === 'q-rename') { if (S.inner) startRenameItem(cq.path); else startRename(qKey(cq.id, cq.path)); }
+      else if (a === 'q-delete') qDelete(cq.id, cq.path);
+      else if (a === 'q-level') qSetLevel(cq.id, cq.path, +act.dataset.l);
+      else if (a === 'q-imp') qToggleImp(cq.id, cq.path);
+      else if (a === 'q-dive') dive(cq.id, cq.path);
+      else if (a === 'q-select') { const p = act.dataset.path ? parsePath(act.dataset.path) : []; if (S.inner) selectInner(p); else selectMapQ(cq.id, p); }
+      else if (a === 'save-answer') saveAnswer(cq.id, cq.path, act.dataset.text || $('#qAnswer')?.textContent || '');
       return;
     }
     const ans = e.target.closest('[data-ans]');
@@ -1356,7 +1643,7 @@
       if (x) toggleKnown(id, x.q, cb.checked);
       return;
     }
-    if (e.target.id === 'qAnsEdit' && S.inner) saveAnswer(S.inner.sel, e.target.value);
+    if (e.target.id === 'qAnsEdit') { const cq = curQ(); if (cq) saveAnswer(cq.id, cq.path, e.target.value); }
   });
   let notesTimer = null;
   panelBody.addEventListener('input', e => {
@@ -1406,36 +1693,36 @@
     const used = new Set(S.project.trees.filter(x => x !== t).map(x => x.color));
     const colors = [...new Set([t.color, ...PALETTE])];
     openPanel('tree', `
-      <div class="p-head"><span class="badge big ks" style="--c:${esc(t.color)}"><span>${t.nodes.length}</span></span>
-        <div><h2 class="p-title">${esc(t.title)}</h2><div class="p-sub"><span class="tag tree" style="--c:${esc(t.color)}">${m}/${t.nodes.length} навыков</span><span class="tag">${kn}/${qn} вопросов</span></div></div></div>
+      <div class="p-head"><span class="badge big done" style="--c:${esc(t.color)}"><span>${t.nodes.length}</span></span>
+        <div><h2 class="p-title">${esc(t.title)}</h2><div class="p-sub"><span class="tag tree" style="--c:${esc(t.color)}">${m}/${t.nodes.length} разделов</span><span class="tag">${kn}/${qn} вопросов</span>${levelTag(t.level)}</div></div></div>
       ${t.description ? `<p class="p-desc">${esc(t.description)}</p>` : ''}
       <div style="--c:${esc(t.color)}"><div class="progress"><i style="width:${t.nodes.length ? Math.round(100 * m / t.nodes.length) : 0}%"></i></div></div>
-      <div class="p-actions">${qn ? '<button class="btn primary" data-act="tree-quiz">Повторить ветку</button>' : ''}<button class="btn" data-act="tree-master">Отметить всю ветку</button><button class="btn ghost" data-act="tree-reset">Сбросить</button></div>
+      <div class="p-actions">${qn ? '<button class="btn primary" data-act="tree-quiz">Повторить тему</button>' : ''}<button class="btn" data-act="tree-master">Отметить всю тему</button><button class="btn ghost" data-act="tree-reset">Сбросить</button></div>
       <div id="confirmSlot"></div>
       ${avail.length ? `<div><p class="sec-title">Можно изучать сейчас</p><div class="links">${avail.map(n => chip(n.id)).join('')}</div></div>` : ''}
-      <div><p class="sec-title">Все навыки ветки</p><div class="links">${t.nodes.map(n => chip(n.id)).join('')}</div></div>
-      <details class="edit"><summary>Изменить ветку</summary>
+      <div><p class="sec-title">Все разделы темы</p><div class="links">${t.nodes.map(n => chip(n.id)).join('')}</div></div>
+      <details class="edit"><summary>Изменить тему</summary>
         <form class="form" id="treeForm">
           <label class="field"><span>Название</span><input id="t-title" value="${esc(t.title)}" required></label>
-          <div class="field"><span>Цвет</span><div class="swatches">${colors.map((c, i) => `<input type="radio" name="tc" id="tc-${i}" value="${esc(c)}"${c === t.color ? ' checked' : ''}><label for="tc-${i}" style="--c:${esc(c)}" title="${used.has(c) ? 'Уже у другой ветки' : esc(c)}"></label>`).join('')}</div></div>
+          <label class="field"><span>Сложность темы</span><select id="t-level">${levelOptions(t.level || null)}</select></label>
+          <div class="field"><span>Цвет</span><div class="swatches">${colors.map((c, i) => `<input type="radio" name="tc" id="tc-${i}" value="${esc(c)}"${c === t.color ? ' checked' : ''}><label for="tc-${i}" style="--c:${esc(c)}" title="${used.has(c) ? 'Уже у другой темы' : esc(c)}"></label>`).join('')}</div></div>
           <label class="field"><span>Описание</span><textarea id="t-desc">${esc(t.description || '')}</textarea></label>
-          <div class="p-actions"><button class="btn primary" type="submit">Сохранить</button><button class="btn" type="button" data-act="tree-add">Добавить навык</button><button class="btn danger" type="button" data-ed="del-tree">Удалить ветку</button></div>
+          <div class="p-actions"><button class="btn primary" type="submit">Сохранить</button><button class="btn" type="button" data-act="tree-add">Добавить раздел</button><button class="btn danger" type="button" data-ed="del-tree">Удалить тему</button></div>
         </form></details>`);
+    $('#t-level').addEventListener('change', e => {
+      // picking a difficulty also picks its color, as in the XMind map
+      const l = +e.target.value; if (!l) return;
+      const r = $(`input[name="tc"][value="${LEVELS[l].c}"]`); if (r) r.checked = true;
+    });
     $('#treeForm').addEventListener('submit', e => {
       e.preventDefault();
       const title = $('#t-title').value.trim(); if (!title) return;
       pushUndo();
       Object.assign(t, { title, color: $('input[name="tc"]:checked')?.value || t.color, description: $('#t-desc').value.trim() });
-      saveProject(); toast('Ветка сохранена');
+      const lv = +$('#t-level').value; if (lv) t.level = lv; else delete t.level;
+      saveProject(); toast('Тема сохранена');
     });
-    panelBody.querySelector('[data-ed="del-tree"]').onclick = () => confirmIn(`Удалить ветку «${t.title}» со всеми навыками (${t.nodes.length})?`, 'Удалить', () => {
-      pushUndo();
-      const ids = new Set(t.nodes.map(n => n.id));
-      S.project.trees = S.project.trees.filter(x => x !== t);
-      for (const x of S.project.trees) for (const n of x.nodes) for (const k of ['requires', 'requiresAny']) if (n[k]) { n[k] = n[k].filter(r => !ids.has(r)); if (!n[k].length) delete n[k]; }
-      S.selTree = null; closePanel(); saveProject();
-      toast('Ветка удалена', 'Ctrl + Z вернёт');
-    });
+    panelBody.querySelector('[data-ed="del-tree"]').onclick = () => confirmIn(`Удалить тему «${t.title}» со всеми разделами (${t.nodes.length})?`, 'Удалить', () => deleteTree(t.id));
   }
 
   function renderProjectPanel() {
@@ -1443,17 +1730,18 @@
     const total = S.idx.size, m = [...S.idx.keys()].filter(isMastered).length;
     const av = [...S.idx.keys()].filter(id => nodeState(id) === 'available');
     const learning = [...S.idx.keys()].filter(id => nodeState(id) === 'learning');
+    let qn = 0; S.idx.forEach((_, id) => { qn += qStats(id).total; });
     openPanel('project', `
       <div class="p-head"><span class="badge big" style="--c:var(--gold)"><span>${Math.round(total ? 100 * m / total : 0)}%</span></span>
-        <div><h2 class="p-title">${esc(p.title)}</h2><div class="p-sub"><span class="tag">${m}/${total} навыков</span><span class="tag">${p.trees.length} веток</span></div></div></div>
+        <div><h2 class="p-title">${esc(p.title)}</h2><div class="p-sub"><span class="tag">${p.trees.length} тем</span><span class="tag">${m}/${total} разделов</span><span class="tag">${qn} вопросов</span></div></div></div>
       ${p.description ? `<p class="p-desc">${esc(p.description)}</p>` : ''}
-      <div class="p-actions"><button class="btn" data-act="add-tree">${icon('plus')} Новая ветка</button></div>
+      <div class="p-actions"><button class="btn" data-act="add-tree">${icon('plus')} Новая тема</button></div>
       ${learning.length ? `<div><p class="sec-title">Сейчас изучаю</p><div class="links">${learning.map(chip).join('')}</div></div>` : ''}
-      ${av.length ? `<div><p class="sec-title">Открыто для изучения <span class="mono">${av.length}</span></p><div class="links">${av.map(chip).join('')}</div></div>` : '<p class="muted" style="margin:0">Все доступные навыки уже в работе.</p>'}
+      ${av.length ? `<div><p class="sec-title">Открыто для изучения <span class="mono">${av.length}</span></p><div class="links">${av.map(chip).join('')}</div></div>` : '<p class="muted" style="margin:0">Все доступные разделы уже в работе.</p>'}
       <details class="edit"><summary>Изменить карту</summary>
         <form class="form" id="projForm2">
           <div class="field-row"><label class="field"><span>Название карты</span><input id="pp-title" value="${esc(p.title)}" required></label>
-            <label class="field"><span>Центр</span><input id="pp-center" value="${esc(p.center?.title || '')}" maxlength="16"></label></div>
+            <label class="field"><span>Начало линии</span><input id="pp-center" value="${esc(p.center?.title || '')}" maxlength="24"></label></div>
           <label class="field"><span>Описание</span><textarea id="pp-desc">${esc(p.description || '')}</textarea></label>
           <div class="p-actions"><button class="btn primary" type="submit">Сохранить</button></div>
         </form></details>`);
@@ -1467,68 +1755,35 @@
     });
   }
 
-  // ------------------------------------------------------------------ inner mind map (dive into a skill)
+  // ------------------------------------------------------------------ inner mind map (dive into a section)
   const innerNode = () => (S.inner ? S.idx.get(S.inner.id)?.n : null);
-  function entryAt(n, path) {
-    if (!n || !path) return null;
-    let list = n.questions || [], e = null;
-    for (const i of path) { e = list[i]; if (e == null) return null; list = isTopic(e) ? (e.items || []) : []; }
-    return e;
-  }
-  function listAt(n, path) {
-    if (!path.length) return n.questions || (n.questions = []);
-    const e = entryAt(n, path);
-    return isTopic(e) ? (e.items || (e.items = [])) : null;
-  }
-
-  const mctx = document.createElement('canvas').getContext('2d');
-  const FONT = '"Golos Text", "Segoe UI", system-ui, sans-serif';
-  function wrapText(text, font, maxW) {
-    mctx.font = font;
-    const words = String(text).split(/\s+/).filter(Boolean);
-    const lines = []; let cur = '';
-    const push = w => {
-      // split very long words
-      while (mctx.measureText(w).width > maxW && w.length > 4) {
-        let k = w.length - 1; while (k > 1 && mctx.measureText(w.slice(0, k) + '-').width > maxW) k--;
-        lines.push(w.slice(0, k) + '-'); w = w.slice(k);
-      }
-      return w;
-    };
-    for (let w of words) {
-      const t = cur ? cur + ' ' + w : w;
-      if (mctx.measureText(t).width <= maxW) { cur = t; continue; }
-      if (cur) lines.push(cur);
-      cur = push(w);
-    }
-    if (cur || !lines.length) lines.push(cur);
-    return { lines, w: Math.max(...lines.map(l => mctx.measureText(l).width)) };
-  }
 
   const HG = 40, HG_ROOT = 64, VG = 10, LH = 18;
   function buildInner() {
-    const id = S.inner.id, { n } = S.idx.get(id);
+    const id = S.inner.id, { n, t } = S.idx.get(id);
     const known = knownSet(id);
     const items = [];
-    const mk = (e, path, depth) => {
+    const mk = (e, path, depth, lvl) => {
       const key = path.join('.');
-      const it = { key, path, depth, children: [] };
+      const it = { key, path, depth, children: [], level: qLevel(e) || lvl, important: qImp(e) };
       if (isTopic(e)) {
         it.kind = 'topic'; it.text = e.topic;
         const fl = flatQ(e.items);
         it.total = fl.length; it.known = fl.filter(x => known.has(x.q)).length;
         it.hasKids = (e.items || []).length > 0;
         it.folded = S.inner.collapsed.has(key);
-        if (!it.folded) it.children = (e.items || []).map((c, i) => mk(c, [...path, i], depth + 1));
-        const t = wrapText(it.text, `600 13.5px ${FONT}`, 230);
-        mctx.font = `500 10.5px "JetBrains Mono", monospace`;
+        if (!it.folded) it.children = (e.items || []).map((c, i) => mk(c, [...path, i], depth + 1, it.level));
+        const tw = wrapText(it.text, `600 13.5px ${FONT}`, 230);
+        mctx.font = `500 10.5px ${MONO}`;
         it.cntText = `${it.known}/${it.total}`;
         const cw = mctx.measureText(it.cntText).width;
-        it.lines = t.lines; it.w = Math.ceil(16 + t.w + 12 + cw + 14); it.h = t.lines.length * LH + 14;
+        it.pad = it.important ? 34 : 16;
+        it.lines = tw.lines; it.w = Math.ceil(it.pad + tw.w + 12 + cw + 14); it.h = tw.lines.length * LH + 14;
       } else {
         it.kind = 'q'; it.text = qText(e); it.ans = qAns(e); it.known = known.has(it.text);
-        const t = wrapText(it.text, `400 13px ${FONT}`, 250);
-        it.lines = t.lines; it.w = Math.max(120, Math.ceil(32 + t.w + 16)); it.h = t.lines.length * LH + 16;
+        const tw = wrapText(it.text, `400 13px ${FONT}`, 250);
+        it.pad = it.important ? 50 : 32;
+        it.lines = tw.lines; it.w = Math.max(120, Math.ceil(it.pad + tw.w + 16)); it.h = tw.lines.length * LH + 16;
       }
       items.push(it);
       return it;
@@ -1536,7 +1791,7 @@
     const root = { key: '', path: [], depth: 0, kind: 'root', text: n.title, abbr: abbrOf(n), mastered: isMastered(id) };
     const rt = wrapText(n.title, `600 18px ${FONT}`, 260);
     root.lines = rt.lines; root.w = Math.max(170, Math.ceil(rt.w + 48)); root.h = rt.lines.length * 24 + 42;
-    root.children = (n.questions || []).map((c, i) => mk(c, [i], 1));
+    root.children = (n.questions || []).map((c, i) => mk(c, [i], 1, n.level || t.level || null));
     items.push(root);
 
     const sub = it => (it.sub = it.children.length ? Math.max(it.h, it.children.reduce((s, c) => s + sub(c), 0) + VG * (it.children.length - 1)) : it.h);
@@ -1586,6 +1841,8 @@
     for (const it of S.inner.items) {
       const sel = it.key === selKey ? ' sel' : '';
       const box = `<rect class="sel-box" x="-4" y="-4" width="${it.w + 8}" height="${it.h + 8}" rx="11"/>`;
+      const lc = levelColor(it.level);
+      const attrs = `data-path="${it.key}" data-l="${it.level || 0}"${it.important ? ' data-imp="1"' : ''}${lc ? ` style="--lc:${lc}"` : ''}`;
       if (it.kind === 'root') {
         nh += `<g class="it k-root${it.mastered ? ' mastered' : ''}${sel}" data-path="" transform="translate(${f1(it.x)},${f1(it.y)})">${box}
           <rect class="card" width="${it.w}" height="${it.h}" rx="12"/>
@@ -1593,16 +1850,18 @@
           <text class="qt" text-anchor="middle">${it.lines.map((l, i) => `<tspan x="${it.w / 2}" y="${44 + i * 24}">${esc(l)}</tspan>`).join('')}</text></g>`;
       } else if (it.kind === 'topic') {
         const fx = it.dir > 0 ? it.w + 9 : -9;
-        nh += `<g class="it k-topic${sel}" data-path="${it.key}" transform="translate(${f1(it.x)},${f1(it.y)})">${box}
+        nh += `<g class="it k-topic${sel}" ${attrs} transform="translate(${f1(it.x)},${f1(it.y)})">${box}
           <rect class="card" width="${it.w}" height="${it.h}" rx="${Math.min(it.h / 2, 13)}"/>
-          <text class="qt">${it.lines.map((l, i) => `<tspan x="16" y="${20 + i * LH}">${esc(l)}</tspan>`).join('')}</text>
+          ${it.important ? impSvg(18, 17) : ''}
+          <text class="qt">${it.lines.map((l, i) => `<tspan x="${it.pad}" y="${20 + i * LH}">${esc(l)}</tspan>`).join('')}</text>
           <text class="cnt" x="${it.w - 14}" y="20" text-anchor="end">${it.cntText}</text>
           ${it.hasKids ? `<g data-fold="1"><circle class="fold" cx="${fx}" cy="${f1(it.h / 2)}" r="8"/><text class="fold-t" x="${fx}" y="${f1(it.h / 2 + 3.5)}">${it.folded ? '+' : '−'}</text></g>` : ''}</g>`;
       } else {
-        nh += `<g class="it k-q${it.known ? ' known' : ''}${sel}" data-path="${it.key}" transform="translate(${f1(it.x)},${f1(it.y)})">${box}
+        nh += `<g class="it k-q${it.known ? ' known' : ''}${sel}" ${attrs} transform="translate(${f1(it.x)},${f1(it.y)})">${box}
           <rect class="card" width="${it.w}" height="${it.h}" rx="8"/>
           <g class="chk" data-check="1"><circle cx="16" cy="17" r="12" fill="transparent"/><circle class="chk-c" cx="16" cy="17" r="7"/><path class="tick" d="M12.6 17.2l2.4 2.4 4.2-4.6"/></g>
-          <text class="qt">${it.lines.map((l, i) => `<tspan x="32" y="${21 + i * LH}">${esc(l)}</tspan>`).join('')}</text>
+          ${it.important ? impSvg(36, 17) : ''}
+          <text class="qt">${it.lines.map((l, i) => `<tspan x="${it.pad}" y="${21 + i * LH}">${esc(l)}</tspan>`).join('')}</text>
           ${it.ans ? `<circle class="has-a" cx="${it.w - 7}" cy="7" r="2.2"><title>Есть ответ</title></circle>` : ''}</g>`;
       }
     }
@@ -1643,13 +1902,13 @@
     if (S.inner) { if (S.inner.id === id) { if (selPath) selectInner(selPath); return; } leaveInnerInstant(); }
     S.anim = true;
     S.sel = id; S.selTree = null; syncHash();
-    refreshMap();
+    markSel();
     if (isNarrow()) closePanel();
     const p = S.layout.pos.get(id);
     S.mapView = { ...S.view };
     try { await Promise.race([document.fonts ? document.fonts.ready : null, new Promise(r => setTimeout(r, 400))]); } catch (e) { /* ignore */ }
     svg.classList.add('fade-world');
-    await flyTo(p.x, p.y, clamp(S.view.k * 3.2, 1.8, 3.5), 360, 'in');
+    await flyTo(p.x, p.y, clamp(S.view.k * 3.2, 1.6, 3.2), 360, 'in');
     world.style.display = 'none';
     S.inner = { id, sel: selPath || [], collapsed: new Set(), items: [] };
     app.classList.add('inner-mode');
@@ -1679,7 +1938,7 @@
     await animateView({ k: S.view.k * 0.6, x: S.view.x * 0.6 + b.w / 2 * 0.4, y: S.view.y * 0.6 + b.h / 2 * 0.4 }, 260, 'in');
     finishLeave();
     const p = S.layout.pos.get(id), back = S.mapView || S.view;
-    S.view = p ? viewFor(p.x, p.y, clamp(back.k * 3.2, 1.8, 3.5)) : back;
+    S.view = p ? viewFor(p.x, p.y, clamp(back.k * 3.2, 1.6, 3.2)) : back;
     applyView();
     void world.getBoundingClientRect();
     svg.classList.remove('fade-world');
@@ -1702,7 +1961,7 @@
     svg.classList.remove('fade-world', 'fade-inner');
     if (S.mapView) S.view = { ...S.mapView };
     applyView();
-    refreshMap();
+    markSel();
   }
   $('#backBtn').addEventListener('click', () => exitInner());
   $('#crumbPath').addEventListener('click', () => { if (S.inner) selectInner([]); });
@@ -1720,42 +1979,19 @@
   function renderInnerPanel() {
     const path = S.inner.sel;
     if (!path) { closePanel(); return; }
-    const id = S.inner.id, { n, t } = S.idx.get(id);
-    if (!path.length) { renderNodePanel(id); return; }
-    const e = entryAt(n, path);
-    if (!e) { renderNodePanel(id); return; }
-    const known = knownSet(id);
-    const crumbs = [];
-    for (let i = 1; i < path.length; i++) { const x = entryAt(n, path.slice(0, i)); if (isTopic(x)) crumbs.push(`<button class="link-chip" data-act="q-select" data-path="${path.slice(0, i).join('.')}" style="--c:${esc(t.color)}">${esc(x.topic)}</button>`); }
-    const head = `<div class="p-head">${badge(id)}<div><div class="p-sub" style="margin:0 0 4px"><button class="tag tree" data-act="q-select" data-path="" style="--c:${esc(t.color)};border:0;cursor:pointer">${esc(n.title)}</button></div></div></div>
-      ${crumbs.length ? `<div class="links">${crumbs.join('')}</div>` : ''}`;
-    const tools = `<div class="p-actions"><button class="btn small" data-act="q-child">Подвопрос <span class="kbd">Tab</span></button><button class="btn small" data-act="q-sibling">Рядом <span class="kbd">Enter</span></button><button class="btn small" data-act="q-rename">Переименовать <span class="kbd">F2</span></button><button class="btn small danger" data-act="q-delete">Удалить</button></div>`;
-    if (isTopic(e)) {
-      const fl = flatQ(e.items), k = fl.filter(x => known.has(x.q)).length;
-      openPanel('inner-topic', `${head}
-        <h2 class="p-title">${esc(e.topic)}</h2>
-        <div style="--c:${esc(t.color)}"><p class="sec-title"><span>Подтема</span><span class="mono">${k}/${fl.length}</span></p><div class="progress"><i style="width:${fl.length ? Math.round(100 * k / fl.length) : 0}%"></i></div></div>
-        <div class="links">${(e.items || []).map((x, i) => `<button class="link-chip${!isTopic(x) && known.has(qText(x)) ? ' done' : ''}" data-act="q-select" data-path="${[...path, i].join('.')}" style="--c:${esc(t.color)}"><span class="dot"></span>${esc(qText(x).length > 60 ? qText(x).slice(0, 58) + '…' : qText(x))}</button>`).join('')}</div>
-        ${tools}`);
-      return;
-    }
-    const q = qText(e), a = qAns(e), isK = known.has(q);
-    openPanel('inner-q', `${head}
-      <h2 class="p-title q">${esc(q)}</h2>
-      <div class="p-actions"><button class="btn ${isK ? 'good' : 'primary'}" data-act="q-known">${isK ? 'Знаю ✓' : 'Знаю ответ'}</button>
-        ${a ? '' : `<button class="btn" data-act="q-ask">${S.sample ? 'Спросить Claude' : 'Спросить Claude ↗'}</button>`}</div>
-      <div style="--c:${esc(t.color)}">${a ? `<p class="sec-title">Ответ</p><div class="answer-box" id="qAnswer">${esc(a)}</div>` : '<div class="answer-box" id="qAnswer" hidden></div>'}</div>
-      <label class="field"><span>${a ? 'Изменить ответ' : 'Записать свой ответ'}</span><textarea id="qAnsEdit" class="notes" placeholder="Коротко, своими словами">${esc(a)}</textarea></label>
-      ${tools}`);
+    const id = S.inner.id;
+    if (!path.length || !entryAt(S.idx.get(id).n, path)) { renderNodePanel(id); return; }
+    renderQPanel(id, path);
   }
 
   function innerKey(e) {
-    const path = S.inner.sel, k = e.key;
-    if (k === 'Tab') { e.preventDefault(); innerAddChild(path || []); return; }
-    if (k === 'Enter') { e.preventDefault(); if (path && path.length) innerAddSibling(path); else innerAddChild([]); return; }
+    const path = S.inner.sel, k = e.key, id = S.inner.id;
+    if (path && qKeys(e, id, path)) return;
+    if (k === 'Tab') { e.preventDefault(); qAddChild(id, path || []); return; }
+    if (k === 'Enter') { e.preventDefault(); if (path && path.length) qAddSibling(id, path); else qAddChild(id, []); return; }
     if ((k === 'F2' || k === ' ') && path) { e.preventDefault(); startRenameItem(path); return; }
-    if ((k === 'Delete' || k === 'Backspace') && path && path.length) { e.preventDefault(); innerDelete(path); return; }
-    if (e.altKey && (k === 'ArrowUp' || k === 'ArrowDown') && path && path.length) { e.preventDefault(); innerMove(path, k === 'ArrowUp' ? -1 : 1); return; }
+    if ((k === 'Delete' || k === 'Backspace') && path && path.length) { e.preventDefault(); qDelete(id, path); return; }
+    if (e.altKey && (k === 'ArrowUp' || k === 'ArrowDown') && path && path.length) { e.preventDefault(); qMove(id, path, k === 'ArrowUp' ? -1 : 1); return; }
     if (k.startsWith('Arrow')) {
       e.preventDefault();
       const its = S.inner.items;
@@ -1773,105 +2009,27 @@
 
   function startRenameItem(path, initial) {
     const n = innerNode(); if (!n) return;
-    const it = S.inner.items.find(x => x.key === path.join('.'));
+    const key = path.join('.');
+    const it = S.inner.items.find(x => x.key === key);
     if (!it) return;
-    if (!path.length) { S.sel = S.inner.id; startInline({ kind: 'item', path, orig: n.title, commit: v => { renameNode(S.inner.id, v); } }, initial); return; }
+    const box = () => S.inner && S.inner.items.find(x => x.key === key);
+    const id = S.inner.id;
+    if (!path.length) { startInline({ box, align: 'center', orig: n.title, commit: v => renameNode(id, v) }, initial); return; }
     const e = entryAt(n, path);
     S.inner.sel = path;
-    ensureVisible(it.x, it.y, it.w, it.h).then(() => startInline({ kind: 'item', path, orig: qText(e), commit: v => innerRename(path, v) }, initial));
-  }
-  function innerRename(path, v) {
-    const n = innerNode(), e = entryAt(n, path); if (!e) return;
-    pushUndo();
-    const list = listAt(n, path.slice(0, -1)), i = path[path.length - 1];
-    if (isTopic(e)) e.topic = v;
-    else { const old = qText(e); if (typeof e === 'string') list[i] = v; else e.q = v; renameKnown(S.inner.id, old, v); }
-    saveProject();
-  }
-  function uniqueQ(n, base = 'Новый вопрос') {
-    const have = new Set(flatQ(n.questions).map(x => x.q));
-    let q = base, i = 2; while (have.has(q)) q = `${base} ${i++}`;
-    return q;
-  }
-  function innerAddChild(path) {
-    const n = innerNode(); if (!n) return;
-    pushUndo();
-    let newPath;
-    if (!path.length) { n.questions = n.questions || []; n.questions.push(uniqueQ(n)); newPath = [n.questions.length - 1]; }
-    else {
-      let e = entryAt(n, path); if (e == null) return;
-      if (!isTopic(e)) {
-        const list = listAt(n, path.slice(0, -1));
-        const topic = { topic: qText(e), items: [] };
-        if (qAns(e)) topic.items.push({ q: 'Ответ', a: qAns(e) });
-        list[path[path.length - 1]] = topic; e = topic;
-        toast('Вопрос стал подтемой', 'Ctrl + Z вернёт');
-      }
-      e.items.push(uniqueQ(n));
-      S.inner.collapsed.delete(path.join('.'));
-      newPath = [...path, e.items.length - 1];
-    }
-    saveProject();
-    selectInner(newPath);
-    startRenameItem(newPath);
-  }
-  function innerAddSibling(path) {
-    const n = innerNode(); if (!n || !path.length) { innerAddChild([]); return; }
-    pushUndo();
-    const list = listAt(n, path.slice(0, -1)), i = path[path.length - 1];
-    list.splice(i + 1, 0, uniqueQ(n));
-    const newPath = [...path.slice(0, -1), i + 1];
-    saveProject();
-    selectInner(newPath);
-    startRenameItem(newPath);
-  }
-  function innerDelete(path) {
-    const n = innerNode(); if (!n || !path.length) return;
-    pushUndo();
-    const list = listAt(n, path.slice(0, -1)), i = path[path.length - 1];
-    const [gone] = list.splice(i, 1);
-    saveProject();
-    const next = list.length ? [...path.slice(0, -1), Math.min(i, list.length - 1)] : path.slice(0, -1);
-    selectInner(next);
-    toast(isTopic(gone) ? `Подтема удалена: ${gone.topic}` : 'Вопрос удалён', 'Ctrl + Z вернёт');
-  }
-  function innerMove(path, d) {
-    const n = innerNode(); if (!n) return;
-    const list = listAt(n, path.slice(0, -1)), i = path[path.length - 1], j = i + d;
-    if (j < 0 || j >= list.length) return;
-    pushUndo();
-    [list[i], list[j]] = [list[j], list[i]];
-    saveProject();
-    selectInner([...path.slice(0, -1), j], { keyboard: true });
-  }
-  function toggleInnerKnown(path) {
-    const e = entryAt(innerNode(), path); if (!e || isTopic(e)) return;
-    const q = qText(e);
-    S.inner.sel = path;
-    toggleKnown(S.inner.id, q, !knownSet(S.inner.id).has(q));
+    ensureVisible(it.x, it.y, it.w, it.h).then(() => startInline({ box, align: 'left', orig: qText(e), commit: v => qRename(id, path, v) }, initial));
   }
   function toggleFold(path) {
     const k = path.join('.');
     S.inner.collapsed.has(k) ? S.inner.collapsed.delete(k) : S.inner.collapsed.add(k);
     renderInner();
   }
-  function saveAnswer(path, text) {
-    const n = innerNode(), e = entryAt(n, path); if (!e || isTopic(e)) return;
-    const v = String(text).trim();
-    if (v === qAns(e)) return;
-    pushUndo();
-    const list = listAt(n, path.slice(0, -1)), i = path[path.length - 1];
-    list[i] = v ? { q: qText(e), a: v } : qText(e);
-    saveProject();
-    toast(v ? 'Ответ сохранён' : 'Ответ удалён');
-  }
 
   // ------------------------------------------------------------------ persistence of project / progress
   let projTimer = null;
   function saveProject() {
     indexProject();
-    computeLayout();
-    renderMap();
+    refreshMap();
     if (S.inner) renderInner();
     rerenderOpenPanel(); renderLegend(); renderHud(); updateDock(); renderHint();
     clearTimeout(projTimer);
@@ -1887,15 +2045,13 @@
   function saveProgress() { Store.set('progress-' + S.pid, S.progress); }
   function savePrefs() { Store.set('prefs', S.prefs); }
 
-  // Edits of a built-in map are stored as a full copy. Copies saved before the redesign get the new
-  // built-in map instead, keeping the positions the user dragged nodes to.
+  // Edits of a built-in map are stored as a full copy. A copy of an older format of the built-in map
+  // (before the XMind timeline) is replaced by the new map; progress is kept by section id.
   function upgradeSaved(saved, base) {
-    if (!saved || !base || saved.baseRev) return saved;
-    const fresh = clone(base);
-    const posById = new Map();
-    for (const t of saved.trees || []) for (const n of t.nodes || []) if (n.pos) posById.set(n.id, n.pos);
-    for (const t of fresh.trees) for (const n of t.nodes) if (posById.has(n.id)) n.pos = posById.get(n.id);
-    return fresh;
+    if (!saved || !base) return saved;
+    if (saved.baseRev && (saved.schema || 1) >= (base.schema || 1)) return saved;
+    S.upgraded = !!saved.baseRev;
+    return clone(base);
   }
 
   async function openProject(id, opts = {}) {
@@ -1913,9 +2069,10 @@
     closePanel();
     indexProject(); computeLayout(); renderMap(); renderLegend(); renderHud(); updateDock(); renderHint();
     $('#revertBtn').hidden = !b;
-    if (!opts.keepView) fitAll(false);
+    if (!opts.keepView) startView(false);
     S.prefs.last = id; savePrefs();
-    if (b && saved && saved.baseRev && b.rev && saved.baseRev !== b.rev && !opts.keepView) toast('Вышла новая версия карты', 'Меню ⋯ → «Вернуть исходную карту», если хочешь её');
+    if (S.upgraded) { S.upgraded = false; Store.set('project-' + id, S.project); toast('Карта перестроена как в XMind', 'Прогресс по разделам сохранён'); }
+    else if (b && saved && saved.baseRev && b.rev && saved.baseRev !== b.rev && !opts.keepView) toast('Вышла новая версия карты', 'Меню ⋯ → «Вернуть исходную карту», если хочешь её');
     return true;
   }
   function normalizeProject(p) {
@@ -1928,8 +2085,8 @@
     if (!p || typeof p !== 'object' || !p.id || !p.title || !Array.isArray(p.trees)) return 'Нужен объект с полями id, title и trees';
     const ids = new Set();
     for (const t of p.trees) {
-      if (!t || !t.id || !Array.isArray(t.nodes)) return 'У каждой ветки должны быть id и nodes';
-      for (const n of t.nodes) { if (!n.id || !n.title) return 'У каждого навыка должны быть id и title'; if (ids.has(n.id)) return `Повторяется id навыка: ${n.id}`; ids.add(n.id); }
+      if (!t || !t.id || !Array.isArray(t.nodes)) return 'У каждой темы должны быть id и nodes';
+      for (const n of t.nodes) { if (!n.id || !n.title) return 'У каждого раздела должны быть id и title'; if (ids.has(n.id)) return `Повторяется id раздела: ${n.id}`; ids.add(n.id); }
     }
     return null;
   }
@@ -1944,7 +2101,7 @@
     $('#projectMenu').innerHTML = allProjects().map(p => `<button data-pid="${esc(p.id)}" class="${p.id === S.pid ? 'active' : ''}"><span class="dot" style="--c:${p.id === S.pid ? 'var(--gold)' : 'var(--dim)'}"></span>${esc(p.title)}</button>`).join('')
       + `<hr><button data-pact="new">${icon('plus', 'sm')} Новый проект</button><button data-pact="import">Импорт проекта из JSON</button>`
       + (!isBuiltin(S.pid) ? '<button data-pact="delete" class="danger">Удалить этот проект</button>' : '')
-      + '<p class="menu-note">Проект это отдельная карта со своими ветками и прогрессом.</p>';
+      + '<p class="menu-note">Проект это отдельная карта со своими темами и прогрессом.</p>';
   }
   function toggleMenu(btn, menu, show) {
     const open = show ?? menu.hidden;
@@ -1977,7 +2134,7 @@
       <form class="form" id="projForm" style="margin:0">
         <label class="field"><span>Название</span><input id="pj-title" required placeholder="System Design"></label>
         <label class="field"><span>Описание</span><textarea id="pj-desc" placeholder="Что хочешь прокачать и зачем"></textarea></label>
-        <label class="field"><span>Первая ветка</span><input id="pj-tree" required placeholder="Основы"></label>
+        <label class="field"><span>Первая тема</span><input id="pj-tree" required placeholder="Основы"></label>
         <div class="p-actions"><button class="btn primary" type="submit">Создать</button><button class="btn ghost" type="button" data-close>Отмена</button></div>
       </form>`);
     $('#pj-title').focus();
@@ -1986,12 +2143,12 @@
       const title = $('#pj-title').value.trim(); if (!title) return;
       let id = slug(title), i = 2; while (allProjects().some(p => p.id === id)) id = `${slug(title)}-${i++}`;
       const tTitle = $('#pj-tree').value.trim() || 'Основы', tid = slug(tTitle);
-      const p = { schema: 1, id, title, description: $('#pj-desc').value.trim(), center: { title: title.length > 14 ? title.split(' ')[0] : title },
-        trees: [{ id: tid, title: tTitle, color: PALETTE[0], description: '', nodes: [{ id: `${tid}.start`, title: tTitle, description: '', keystone: true, questions: [] }] }] };
+      const p = { schema: 2, id, title, description: $('#pj-desc').value.trim(), center: { title },
+        trees: [{ id: tid, title: tTitle, color: PALETTE[0], level: 1, description: '', nodes: [{ id: `${tid}.start`, title: 'Первый раздел', description: '', questions: [] }] }] };
       closeModal();
       await createProject(p);
       selectNode(`${tid}.start`);
-      toast(`Проект «${p.title}» создан`, 'Tab добавляет следующий навык, двойной клик открывает мини-карту');
+      toast(`Проект «${p.title}» создан`, 'Tab добавляет вопрос, Enter добавляет раздел рядом');
     });
   }
   async function createProject(p) {
@@ -2068,13 +2225,13 @@
   let quiz = null;
   function quizPool(scope) {
     const pool = [];
-    S.idx.forEach(({ n, t }, id) => {
+    S.idx.forEach(({ t }, id) => {
       if (scope.node && id !== scope.node) return;
       if (scope.tree && t.id !== scope.tree) return;
       const st = nodeState(id);
-      if (!scope.node && !scope.tree && st !== 'mastered' && st !== 'learning') return;
+      if (!scope.node && !scope.tree && !scope.imp && st !== 'mastered' && st !== 'learning') return;
       if (scope.due && !needsReview(id)) return;
-      for (const x of flatQ(n.questions)) pool.push({ id, q: x.q, a: x.a, g: x.group });
+      for (const x of sectionQs(id)) if (!scope.imp || x.important) pool.push({ id, q: x.q, a: x.a, g: x.group, level: x.level, important: x.important });
     });
     return pool;
   }
@@ -2093,7 +2250,7 @@
   }
   function openQuiz(scope = {}) {
     const due = [...S.idx.keys()].filter(needsReview);
-    if (!scope.node && !scope.tree && due.length && scope.due === undefined) scope.due = true;
+    if (!scope.node && !scope.tree && !scope.imp && due.length && scope.due === undefined) scope.due = true;
     quiz = { scope, pool: quizPool(scope), seen: new Set(), good: 0, bad: 0, cur: null };
     renderQuiz();
   }
@@ -2101,7 +2258,8 @@
     const s = quiz.scope;
     const due = [...S.idx.keys()].filter(needsReview).length;
     return `<div class="scope">
-      <button data-scope="all" class="${!s.node && !s.tree && !s.due ? 'active' : ''}">Всё изученное</button>
+      <button data-scope="all" class="${!s.node && !s.tree && !s.due && !s.imp ? 'active' : ''}">Всё изученное</button>
+      <button data-scope="imp" class="${s.imp ? 'active' : ''}"><b class="imp-mark">!</b>Важные</button>
       ${due ? `<button data-scope="due" class="${s.due ? 'active' : ''}">Пора повторить ${due}</button>` : ''}
       ${s.node ? `<button class="active">${esc(S.idx.get(s.node).n.title)}</button>` : ''}
       ${S.project.trees.map(t => `<button data-scope="tree:${esc(t.id)}" class="${s.tree === t.id ? 'active' : ''}"><span class="dot" style="--c:${esc(t.color)}"></span>${esc(t.title)}</button>`).join('')}
@@ -2113,28 +2271,29 @@
     if (!quiz.cur) {
       openModal(`<h2>Повторение</h2>${quizScopes()}
         ${quiz.pool.length ? `<p class="quiz-q">Готово: ${quiz.good} из ${done} вспомнил уверенно.</p><p class="help-text">Вопросы с ответом «не помню» будут попадаться чаще.</p>`
-          : '<p class="help-text">Здесь пока нет вопросов. Отметь навыки как изученные или выбери ветку выше.</p>'}
-        <div class="p-actions">${quiz.pool.length ? '<button class="btn primary" id="qzAgain">Ещё круг</button>' : ''}<button class="btn ghost" data-close>Закрыть</button></div>`);
+          : '<p class="help-text">Здесь пока нет вопросов. Отметь разделы как изученные или выбери тему выше.</p>'}
+        <div class="p-actions">${quiz.pool.length ? '<button class="btn primary" id="qzAgain">Ещё круг</button>' : ''}<button class="btn ghost" data-close>Закрыть</button></div>`, 'wide');
       const again = $('#qzAgain'); if (again) again.onclick = () => openQuiz(quiz.scope);
       bindScopes(); return;
     }
     const { n, t } = S.idx.get(quiz.cur.id);
+    const c = quiz.cur;
     openModal(`<h2>Повторение</h2>${quizScopes()}
-      <div class="quiz-meta"><span class="tag tree" style="--c:${esc(t.color)}">${esc(n.title)}</span><span class="mono">${done + 1} / ${quiz.pool.length} · помню ${quiz.good}</span></div>
-      <div>${quiz.cur.g ? `<div class="quiz-group" style="--c:${esc(t.color)}">${esc(quiz.cur.g)}</div>` : ''}<div class="quiz-q">${esc(quiz.cur.q)}</div></div>
+      <div class="quiz-meta"><span class="p-sub" style="margin:0"><span class="tag tree" style="--c:${esc(t.color)}">${esc(n.title)}</span>${levelTag(c.level)}</span><span class="mono">${done + 1} / ${quiz.pool.length} · помню ${quiz.good}</span></div>
+      <div>${c.g ? `<div class="quiz-group" style="--c:${esc(t.color)}">${esc(c.g)}</div>` : ''}<div class="quiz-q">${c.important ? impMark : ''}${esc(c.q)}</div></div>
       <div class="answer-box" id="qzAnswer" style="--c:${esc(t.color)}" hidden></div>
-      <div class="p-actions"><button class="btn" id="qzReveal">${quiz.cur.a ? 'Показать ответ' : (S.sample ? 'Спросить Claude' : 'Спросить Claude ↗')} <span class="kbd">Пробел</span></button></div>
-      <div class="quiz-btns"><button class="btn danger" data-rate="bad">Не помню <span class="kbd">1</span></button><button class="btn good" data-rate="good">Помню <span class="kbd">2</span></button></div>`);
+      <div class="p-actions"><button class="btn" id="qzReveal">${c.a ? 'Показать ответ' : (S.sample ? 'Спросить Claude' : 'Спросить Claude ↗')} <span class="kbd">Пробел</span></button></div>
+      <div class="quiz-btns"><button class="btn danger" data-rate="bad">Не помню <span class="kbd">1</span></button><button class="btn good" data-rate="good">Помню <span class="kbd">2</span></button></div>`, 'wide');
     bindScopes();
     $('#qzReveal').onclick = () => {
       const box = $('#qzAnswer');
-      if (quiz.cur.a) { box.hidden = false; box.textContent = quiz.cur.a; } else askClaude(n, quiz.cur.q, box);
+      if (c.a) { box.hidden = false; box.textContent = c.a; } else askClaude(n, c.q, box);
     };
     $$('[data-rate]', modalCard).forEach(b => { b.onclick = () => rate(b.dataset.rate === 'good'); });
   }
   function bindScopes() {
     $$('[data-scope]', modalCard).forEach(b => {
-      b.onclick = () => { const v = b.dataset.scope; openQuiz(v === 'all' ? { due: false } : v === 'due' ? { due: true } : { tree: v.slice(5) }); };
+      b.onclick = () => { const v = b.dataset.scope; openQuiz(v === 'all' ? { due: false } : v === 'due' ? { due: true } : v === 'imp' ? { imp: true } : { tree: v.slice(5) }); };
     });
   }
   function rate(good) {
@@ -2156,21 +2315,35 @@
     q = q.trim().toLowerCase(); if (!q) return [];
     const res = [];
     S.idx.forEach(({ n, t }, id) => {
-      if (n.title.toLowerCase().includes(q) || id.toLowerCase().includes(q) || (n.abbr || '').toLowerCase() === q) { res.push({ id, score: 2, hint: t.title }); return; }
-      const hit = flatQ(n.questions).find(x => x.q.toLowerCase().includes(q) || x.group.toLowerCase().includes(q));
-      if (hit) res.push({ id, score: 1, hint: hit.q, path: hit.path });
-      else if ((n.description || '').toLowerCase().includes(q)) res.push({ id, score: 1, hint: n.description });
+      if (n.title.toLowerCase().includes(q) || id.toLowerCase().includes(q) || (n.abbr || '').toLowerCase() === q) res.push({ id, score: 3, hint: t.title });
+      for (const x of flatQ(n.questions)) if (x.q.toLowerCase().includes(q)) res.push({ id, score: 1, hint: x.q, path: x.path });
     });
     return res.sort((a, b) => b.score - a.score);
+  }
+  function searchKeys(q) {
+    q = q.trim().toLowerCase(); if (!q) return null;
+    const keys = new Set();
+    for (const t of S.project.trees) if (t.title.toLowerCase().includes(q)) keys.add('stage:' + t.id);
+    S.idx.forEach(({ n }, id) => {
+      if (n.title.toLowerCase().includes(q)) keys.add(id);
+      const walk = (list, path) => (list || []).forEach((e, i) => {
+        const p = [...path, i];
+        if (qText(e).toLowerCase().includes(q)) keys.add(qKey(id, p));
+        if (isTopic(e)) walk(e.items, p);
+      });
+      walk(n.questions, []);
+    });
+    return keys;
   }
   const searchEl = $('#search'), resultsEl = $('#searchResults');
   searchEl.addEventListener('input', () => {
     S.search = searchEl.value.trim();
-    const res = searchNodes(S.search).slice(0, 8);
-    resultsEl.innerHTML = res.length ? res.map(r => `<button class="result" data-goto="${esc(r.id)}"${r.path ? ` data-qpath="${r.path.join('.')}"` : ''}>${badge(r.id)}<span>${esc(S.idx.get(r.id).n.title)}</span><small>${esc(r.hint)}</small></button>`).join('')
+    const res = searchNodes(S.search).slice(0, 10);
+    resultsEl.innerHTML = res.length ? res.map(r => `<button class="result" data-goto="${esc(r.id)}"${r.path ? ` data-qpath="${r.path.join('.')}"` : ''}>${badge(r.id)}<span>${esc(r.path ? r.hint : S.idx.get(r.id).n.title)}</span><small>${esc(r.path ? S.idx.get(r.id).n.title : r.hint)}</small></button>`).join('')
       : (S.search ? '<p class="menu-note">Ничего не нашлось</p>' : '');
     resultsEl.hidden = !S.search;
-    if (!S.inner) refreshMap();
+    S.searchKeys = S.search.length >= 2 ? searchKeys(S.search) : null;
+    if (!S.inner) applySearch();
   });
   searchEl.addEventListener('keydown', e => {
     if (e.key === 'Enter') { const f = resultsEl.querySelector('[data-goto]'); if (f) f.click(); }
@@ -2178,10 +2351,10 @@
   });
   resultsEl.addEventListener('click', e => {
     const b = e.target.closest('[data-goto]'); if (!b) return;
-    searchEl.value = ''; S.search = ''; resultsEl.hidden = true;
+    searchEl.value = ''; S.search = ''; S.searchKeys = null; resultsEl.hidden = true; applySearch();
     const id = b.dataset.goto;
-    if (b.dataset.qpath != null) { dive(id, parsePath(b.dataset.qpath)); return; }
     if (S.inner) leaveInnerInstant();
+    if (b.dataset.qpath != null) { selectMapQ(id, parsePath(b.dataset.qpath), { fly: true }); return; }
     selectNode(id, { fly: true });
   });
 
@@ -2205,7 +2378,7 @@
   });
   function showOnboarding() {
     openModal(`<h2>Что ты уже знаешь?</h2>
-      <p class="help-text">Отметь ветки, которые уже прокачаны. Навыки в них станут освоенными, а следующие откроются. Потом всё можно поправить вручную.</p>
+      <p class="help-text">Отметь темы, которые уже прокачаны. Разделы в них станут освоенными, а следующие откроются. Потом всё можно поправить вручную.</p>
       <div class="onb-grid">${S.project.trees.map(t => `<label class="onb-item" style="--c:${esc(t.color)}"><input type="checkbox" value="${esc(t.id)}"><span>${esc(t.title)}</span></label>`).join('')}</div>
       <div class="p-actions"><button class="btn primary" id="onbGo">Поехали</button><button class="btn ghost" id="onbSkip">Начать с нуля</button></div>`);
     const finish = () => { S.prefs.onboarded = true; savePrefs(); closeModal(); };
@@ -2214,7 +2387,7 @@
       const lvlBefore = levelOf(computeXP());
       for (const tid of ids) for (const n of treeById(tid).nodes) { const p = S.progress.nodes[n.id] || (S.progress.nodes[n.id] = {}); if (p.s !== 'mastered') { p.s = 'mastered'; p.t = now(); } }
       saveProgress(); finish(); afterProgress(lvlBefore);
-      if (ids.length) toast('Ветки отмечены', `Доступно для изучения: ${[...S.idx.keys()].filter(id => nodeState(id) === 'available').length}`);
+      if (ids.length) toast('Темы отмечены', `Доступно для изучения: ${[...S.idx.keys()].filter(id => nodeState(id) === 'available').length}`);
     };
     $('#onbSkip').onclick = finish;
   }
@@ -2223,22 +2396,23 @@
     openModal(`<h2>Управление</h2>
       <div class="keys">
         <h3>Карта</h3>
-        ${row('Выбрать навык', 'клик')}${row('Мини-карта навыка', '2× клик / F6')}
+        ${row('Выбрать тему, раздел или вопрос', 'клик')}${row('Отметить «знаю»', 'клик по кружку')}
+        ${row('Мини-карта раздела', '2× клик / F6')}${row('Ходить по карте', 'стрелки')}
         ${row('Прокрутка', 'колесо, перетаскивание')}${row('Масштаб', 'Ctrl + колесо, щипок')}
-        ${row('Следующий навык', 'Tab')}${row('Соседний навык', 'Enter')}
+        ${row('Добавить внутрь', 'Tab')}${row('Добавить рядом', 'Enter')}
         ${row('Переименовать', 'F2, пробел или просто печатай')}${row('Удалить', 'Delete')}
-        ${row('Переставить', 'перетащи навык')}${row('Связать навыки', 'тяни ⊕ к навыку')}
-        ${row('Ходить по карте', 'стрелки')}${row('Меню действий', 'правый клик')}
-        ${row('Показать всё', '0')}${row('Новая ветка', 'Tab в центре')}
+        ${row('Переставить', 'Alt + стрелки')}${row('Меню действий', 'правый клик')}
+        ${row('Сложность вопроса', '1 2 3 4')}${row('Важный вопрос', '!')}
+        ${row('Показать всё', '0')}${row('К началу линии', 'кнопка ⟵ внизу')}
         <h3>Мини-карта</h3>
         ${row('Подвопрос', 'Tab')}${row('Вопрос рядом', 'Enter')}
-        ${row('Знаю ответ', 'клик по кружку')}${row('Свернуть подтему', 'клик по ±')}
-        ${row('Переставить', 'Alt + ↑ ↓')}${row('Назад к карте', 'Esc')}
+        ${row('Свернуть подтему', 'клик по ±')}${row('Назад к карте', 'Esc')}
         <h3>Везде</h3>
         ${row('Отменить', 'Ctrl + Z')}${row('Повторить', 'Ctrl + Shift + Z')}
         ${row('Поиск', 'Ctrl + F или /')}${row('Эта справка', '?')}
       </div>
-      <p class="help-text">Навык открывается, когда освоены все его требования. Вопросы, отмеченные «знаю», дают по 10 XP, освоенный навык даёт 100. Через ${REVIEW_AFTER_DAYS} день после освоения у навыка появляется золотая точка: пора повторить.</p>
+      <p class="help-text">Карта читается как в XMind: темы идут по линии слева направо, от каждой темы отходят разделы, от разделов вопросы. Цвет вопроса это сложность: <b style="color:${LEVELS[1].c}">базовый</b>, <b style="color:${LEVELS[2].c}">средний</b>, <b style="color:${LEVELS[3].c}">сложный</b>, <b style="color:${LEVELS[4].c}">эксперт</b>. Красный «!» отмечает важные вопросы. В легенде слева можно оставить на карте только одну сложность или только важные.</p>
+      <p class="help-text">Раздел открывается, когда освоены все его требования. Вопрос с отметкой «знаю» даёт 10 XP, освоенный раздел 100. Через ${REVIEW_AFTER_DAYS} день после освоения у раздела появляется золотая точка: пора повторить.</p>
       <div class="p-actions"><button class="btn primary" data-close>Понятно</button></div>`, 'wide');
   }
 
@@ -2261,7 +2435,9 @@
     const first = [S.prefs.last, BUILTIN[0]?.id, S.customIndex[0]?.id].find(id => id && (isBuiltin(id) || S.customIndex.some(c => c.id === id)));
     if (!first) { app.insertAdjacentHTML('beforeend', '<p style="position:fixed;inset:40% 0 auto;text-align:center">Нет данных карты. Собери проект командой node scripts/build.mjs</p>'); return; }
     await openProject(first);
-    requestAnimationFrame(() => fitAll(false));
+    requestAnimationFrame(() => startView(false));
+    // text widths depend on the web font: lay out again once it is loaded
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if (!S.inner) { refreshMap(); if (!S.sel) startView(false); } });
     if (fromHash && S.idx.has(fromHash)) setTimeout(() => selectNode(fromHash, { fly: true }), 300);
     else if (!S.prefs.onboarded && !Object.keys(S.progress.nodes).length) setTimeout(showOnboarding, 500);
     svg.focus({ preventScroll: true });

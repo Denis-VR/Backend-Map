@@ -1,21 +1,30 @@
 {
-  "schema": 1,
+  "schema": 2,
   "id": "backend",
   "title": "Backend-разработчик",
-  "description": "Глобальная карта навыков бэкенд-разработчика на Java и Go. Собрана из твоей карты Java Interview.",
+  "description": "Карта бэкенд-разработчика на Java и Go: темы идут по линии, как в твоей карте Java Interview.xmind. Цвет вопроса показывает сложность, «!» отмечает важные.",
   "center": {
-    "title": "Backend"
+    "title": "Backend Stack"
   },
   "trees": [
-    "java",
-    "testing",
-    "spring",
-    "data",
-    "messaging",
-    "architecture",
-    "devops",
-    "network",
+    "java-core",
+    "java-advanced",
     "go",
-    "algorithms"
+    "sql",
+    "hibernate",
+    "deployment",
+    "spring",
+    "testing",
+    "design",
+    "network",
+    "nosql",
+    "message-brokers",
+    "algorithms",
+    "microservices",
+    "spring-microservices",
+    "logging",
+    "ms-patterns",
+    "camunda-bpmn",
+    "interview-go"
   ]
 }
