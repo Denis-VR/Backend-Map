@@ -1,0 +1,70 @@
+{
+  "id": "testing",
+  "title": "Тестирование",
+  "color": "#e3b341",
+  "icon": "🧪",
+  "description": "Виды тестов, JUnit, Mockito и тестирование Spring-приложений.",
+  "nodes": [
+    {
+      "id": "test.basics",
+      "title": "Виды тестирования",
+      "icon": "🧪",
+      "description": "Пирамида тестов: unit, интеграционные, e2e, нагрузочные.",
+      "keystone": true,
+      "questions": [
+        "Какие есть виды тестирования?",
+        "Что такое пирамида тестирования?",
+        "Чем интеграционный тест отличается от unit-теста?"
+      ]
+    },
+    {
+      "id": "test.junit",
+      "title": "JUnit",
+      "icon": "✅",
+      "description": "JUnit 5: аннотации, жизненный цикл, параметризованные тесты.",
+      "requires": [
+        "test.basics",
+        "java.oop"
+      ],
+      "questions": [
+        "Какие различия между версиями JUnit4 и JUnit5?",
+        "Какие основные аннотации в JUnit?",
+        "best-practive: Как измеряется покрытие кода тестами?",
+        "best-practive: Что за принцип \"минимизация внешних зависимостей\"?",
+        "best-practive: Что такое параметризация тестов?"
+      ]
+    },
+    {
+      "id": "test.mockito",
+      "title": "Mockito",
+      "icon": "🎭",
+      "description": "Моки, стабы, спаи, верификация вызовов и ограничения Mockito.",
+      "requires": [
+        "test.junit"
+      ],
+      "questions": [
+        "Какие основные аннотации (Mock, Captor, Spy)?",
+        "Какие виды заглушек в Mockito?",
+        "Как применять @RunWIth?",
+        "Что такое стаббинг и верификация вызовов?",
+        "Какие ограничения в Mockito (статические и final классы)?",
+        "Что такое PowerMock?"
+      ]
+    },
+    {
+      "id": "test.spring",
+      "title": "Spring Boot Test",
+      "icon": "🧫",
+      "description": "@SpringBootTest, слайсы, тестовая БД и Testcontainers.",
+      "requires": [
+        "test.mockito",
+        "spring.core"
+      ],
+      "questions": [
+        "Какие аннотации и как их применять?",
+        "Какие стратегии взаимодействия Spring test с тестовой БД?",
+        "Что такое Testcontainers и зачем они нужны?"
+      ]
+    }
+  ]
+}

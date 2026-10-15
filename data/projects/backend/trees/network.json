@@ -1,0 +1,134 @@
+{
+  "id": "network",
+  "title": "Сети и протоколы",
+  "color": "#986ee2",
+  "icon": "🌐",
+  "description": "Как сервисы разговаривают друг с другом.",
+  "nodes": [
+    {
+      "id": "net.http",
+      "title": "HTTP",
+      "icon": "🌐",
+      "description": "Методы, статусы, заголовки, HTTPS, путь запроса до контроллера.",
+      "keystone": true,
+      "questions": [
+        "Как в Spring Boot принимаются HTTP запросу на всех уровнях?",
+        "Виды HTTP методов?",
+        "Как устроены сервлеты и какой у них жизненный цикл?",
+        "Какая роль у Dispatcher Servlet?",
+        "Что такое http?",
+        "Чем отличается http от https?",
+        "TCP and UDP?",
+        "Что такое RESTAPI, принципы и реализации?",
+        "Как рабоает маршрутизатор и как он работает. его принцип?",
+        "Чем отличается mac от ip",
+        "сети osi"
+      ],
+      "resources": [
+        {
+          "title": "MDN: HTTP",
+          "url": "https://developer.mozilla.org/ru/docs/Web/HTTP"
+        }
+      ]
+    },
+    {
+      "id": "net.osi",
+      "title": "OSI, TCP/IP, TLS",
+      "icon": "📶",
+      "description": "Уровни модели OSI, TCP и UDP, TLS-рукопожатие.",
+      "requires": [
+        "net.http"
+      ],
+      "questions": [
+        "Виды уровней OSI?",
+        "TLS и TCP что это?",
+        "Какая работа у OSI уровней во время приема и отправки HTTP запросов?"
+      ]
+    },
+    {
+      "id": "net.rest",
+      "title": "REST API",
+      "icon": "🔌",
+      "description": "Ресурсы, идемпотентность, версионирование, коды ответов.",
+      "requires": [
+        "net.http"
+      ],
+      "questions": [
+        "Какие принципы REST?",
+        "Какие HTTP-методы идемпотентны?",
+        "Как версионировать API?",
+        "Чем PUT отличается от PATCH?",
+        "Как сделать пагинацию в API?"
+      ]
+    },
+    {
+      "id": "net.tomcat",
+      "title": "Tomcat и сервлеты",
+      "icon": "🐱",
+      "description": "Контейнер сервлетов, Jetty, Undertow, настройка в Spring Boot.",
+      "requires": [
+        "net.http",
+        "java.core"
+      ],
+      "questions": [
+        "Какие аналоги tomcat? (WildFly, Jetty)",
+        "Зачем нужен tomcat и как используется?",
+        "Как настроить Tomcat с помщью Spring Boot?"
+      ]
+    },
+    {
+      "id": "net.websockets",
+      "title": "WebSockets",
+      "icon": "🔊",
+      "description": "Двусторонняя связь, когда её применять.",
+      "requires": [
+        "net.osi"
+      ],
+      "questions": [
+        "Как устроены websocket?",
+        "Где и в каких случаях применять websocket?"
+      ]
+    },
+    {
+      "id": "net.grpc",
+      "title": "gRPC",
+      "icon": "📡",
+      "description": "Protobuf, HTTP/2, стриминг, общение микросервисов.",
+      "requires": [
+        "net.rest"
+      ],
+      "questions": [
+        "Преимущества, недостатки и отличия GRPs от HTTP?",
+        "Ситуации применения GRPs?",
+        "Как микросервисы могут общаться с помощью GRPs и зачем? Как еще они могут общаться?"
+      ]
+    },
+    {
+      "id": "net.graphql",
+      "title": "GraphQL",
+      "icon": "◈",
+      "description": "Схема, запросы, резолверы, где применять.",
+      "requires": [
+        "net.rest"
+      ],
+      "questions": [
+        "Что такое GraphQL и как он устроен?",
+        "Где применять GraphQL?"
+      ]
+    },
+    {
+      "id": "net.soap",
+      "title": "SOAP",
+      "icon": "🧼",
+      "description": "WSDL, плюсы и минусы, когда ещё встречается.",
+      "requires": [
+        "net.rest"
+      ],
+      "questions": [
+        "Преимущества и недостатки SOAP?",
+        "Ситуации применения SOAP?",
+        "Как использовал SOAP на проекте?"
+      ]
+    }
+  ]
+}

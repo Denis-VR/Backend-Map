@@ -1,0 +1,22 @@
+name: Skill tree content
+description: Suggest a new branch, skill or question, or report a wrong prerequisite
+labels: [content]
+body:
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Kind
+      options:
+        - New branch or map
+        - New or changed skill
+        - Questions or answers
+        - Wrong prerequisite order
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: Details
+      description: Which project and branch, what to add or change, and why. Links to good learning resources are welcome.
+    validations:
+      required: true

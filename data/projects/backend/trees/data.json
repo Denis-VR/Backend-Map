@@ -1,0 +1,253 @@
+{
+  "id": "data",
+  "title": "Базы данных",
+  "color": "#539bf5",
+  "icon": "🗄️",
+  "description": "SQL, транзакции, ORM и NoSQL-хранилища.",
+  "nodes": [
+    {
+      "id": "db.sql",
+      "title": "SQL",
+      "icon": "🗄️",
+      "description": "Запросы, JOIN, группировки, нормализация. PostgreSQL как основная СУБД.",
+      "keystone": true,
+      "questions": [
+        "Какие виды Join в SQL?",
+        "Какие есть агрегирующие операторы в SQL",
+        "Какое отличие Where от Having?",
+        "Какие есть виды ограничений в бд?"
+      ],
+      "resources": [
+        {
+          "title": "PostgreSQL Docs",
+          "url": "https://www.postgresql.org/docs/current/"
+        }
+      ]
+    },
+    {
+      "id": "db.objects",
+      "title": "Объекты БД",
+      "icon": "🧱",
+      "description": "Представления, триггеры, процедуры, последовательности.",
+      "requires": [
+        "db.sql"
+      ],
+      "questions": [
+        "Что такое курсор в реляционной БД?",
+        "Что такое хранимые процедуры и как их вызвать?",
+        "Что такое View и когда применять?",
+        "Что такое временные таблицы и когда применять?"
+      ]
+    },
+    {
+      "id": "db.indexes",
+      "title": "Индексы",
+      "icon": "📇",
+      "description": "B-tree, hash, GIN, составные индексы, EXPLAIN.",
+      "requires": [
+        "db.sql"
+      ],
+      "questions": [
+        "Btree: Как устроены Btree индексы?",
+        "Btree: Когда применять Btree индексы?",
+        "Hash: Как устроены hash индексы?",
+        "Hash: Когда применять hash индексы?",
+        "Почему плохо создавать индексы на каждый солбец?"
+      ]
+    },
+    {
+      "id": "db.transactions",
+      "title": "Транзакции",
+      "icon": "🔁",
+      "description": "ACID, уровни изоляции, аномалии, @Transactional.",
+      "requires": [
+        "db.sql"
+      ],
+      "questions": [
+        "Что такое ACID?",
+        "Какие есть уровни изоляций транзакций?",
+        "Как настроить изоляцию в Hibernate и SQL?",
+        "Какие есть параметры @Transactional?",
+        "Что акое Propagation в Hibernate?",
+        "MogoDB",
+        "Postgres: Транзакции",
+        "Postgres: Принцип Acid и примеры реализаций",
+        "Postgres: Уровни изоляций транзакций",
+        "Postgres: Зачем индексы и что это",
+        "Postgres: Составной индекс?",
+        "Postgres: Как работает explain?",
+        "Postgres: Что такое первичный и вторичный индекс?",
+        "Postgres: Зачем нужны ключи",
+        "Postgres: Нормализация и нормальные формы?"
+      ]
+    },
+    {
+      "id": "db.optimization",
+      "title": "Оптимизация запросов",
+      "icon": "🚀",
+      "description": "План запроса, партиционирование, денормализация.",
+      "requires": [
+        "db.indexes"
+      ],
+      "questions": [
+        "Что такое нормализация бд?",
+        "Какие есть способы оптимизаций sql запросов?",
+        "Как использовать Explain и измерять скорость запросов?",
+        "Как сделать пагиниацию данных в sql?"
+      ]
+    },
+    {
+      "id": "db.migrations",
+      "title": "Миграции (Liquibase)",
+      "icon": "🧬",
+      "description": "Версионирование схемы: Liquibase, Flyway, goose.",
+      "requires": [
+        "db.objects"
+      ],
+      "questions": [
+        "Как устроен Liquibase и зачем нужен?",
+        "Как назвать и создать файлы миграции в Liquibase?",
+        "Как система понимает порядок интеграций в Liquibase?"
+      ]
+    },
+    {
+      "id": "db.hibernate",
+      "title": "Hibernate / JPA",
+      "icon": "🐻",
+      "description": "Сущности, жизненный цикл, кэши, N+1, ленивые связи.",
+      "requires": [
+        "db.sql",
+        "java.collections"
+      ],
+      "keystone": true,
+      "questions": [
+        "Что такое проблема n+1 и какие решения (@EntityGraph)?",
+        "Какие уровни кэшей в Hibernate?",
+        "Что такое ORM?",
+        "Как использовать FetchType?",
+        "Как сессии Hibernate управляют состоянием объектов?",
+        "Какой жизненный цикл Entity?",
+        "Зачем нужен Transient в Hibernate?",
+        "Что такое Detached состояние в Hibernate?",
+        "Опишите случай перехода в persistense состояние объекта?",
+        "Способ вернуть отсоединенный объект в постоянное состояние?",
+        "Зачем нуежн Criteria API?",
+        "Что такое триггеры в реляционной БД"
+      ]
+    },
+    {
+      "id": "db.locks",
+      "title": "Блокировки",
+      "icon": "🔒",
+      "description": "Оптимистичные и пессимистичные блокировки, SELECT FOR UPDATE.",
+      "requires": [
+        "db.transactions",
+        "db.hibernate"
+      ],
+      "questions": [
+        "Как работают писсемистические и оптимистические блокировки в Hibernate?",
+        "Как настроить блокировки в hibernate?",
+        "Какие виды и цели запросов SELECT FOR в Hibernate?"
+      ]
+    },
+    {
+      "id": "nosql.redis",
+      "title": "Redis",
+      "icon": "🟥",
+      "description": "Кэш, структуры данных, персистентность, кластеры.",
+      "requires": [
+        "db.sql"
+      ],
+      "questions": [
+        "Как реализована устойчивость данных в Redis?",
+        "Как реализовать кластеризацию и масштабирование Redis?",
+        "Какие есть способы обеспечения высокой доступности Redis?",
+        "Какие преимущества и недостатки у Redis?",
+        "Аннотации redis в Java и Spring?",
+        "В каких случаях Redis не является оптимальным выбором?",
+        "Расскажите про распределенные кэши в redis?",
+        "Как работает механизм транзакций в Redis?"
+      ]
+    },
+    {
+      "id": "nosql.mongo",
+      "title": "MongoDB",
+      "icon": "🍃",
+      "description": "Документная модель, индексы, шардирование, репликация.",
+      "requires": [
+        "db.indexes"
+      ],
+      "questions": [
+        "Как работает механизм транзакций и блокировок в MongoDB?",
+        "Как машстабируется MondoDB?",
+        "Что такое шардирование и как оно работает в MongoDB?",
+        "Как обеспечивается репликация и высокая доступность в MongoDB?",
+        "Какие существуют индексы и как они влияют на производительность в MongoDB?",
+        "Как использовать профайлер для анализа производительности запросов в MongoDB?",
+        "Как мониторить и оптимизировать работу MongoDB?",
+        "Какие основные преимущества MongoDB перед реляционными СУБД?",
+        "В каких случаях MongoDB не является оптимальным выбором?",
+        "Какие типы данных поддерживает MongoDB?"
+      ]
+    },
+    {
+      "id": "nosql.cassandra",
+      "title": "Cassandra",
+      "icon": "👁️",
+      "description": "Wide-column, keyspace, уровни согласованности.",
+      "requires": [
+        "nosql.mongo",
+        "algo.distributed"
+      ],
+      "questions": [
+        "Как масштабируется Cassandra?",
+        "Как распределяются данные по нодам в кластере Cassandra?",
+        "Как обеспечивается высокая доступность и отказоустойчивость в Cassandra?",
+        "Преимущества и недостатки Cassandra?",
+        "Что такое keyspace и column family в Cassandra?",
+        "Какие уровни согласованности поддерживает Cassandra?",
+        "Какие best practices по моделированию данных в Cassandra?"
+      ]
+    },
+    {
+      "id": "nosql.clickhouse",
+      "title": "ClickHouse",
+      "icon": "📊",
+      "description": "Колоночная аналитика, MergeTree и его варианты.",
+      "requires": [
+        "db.optimization"
+      ],
+      "questions": [
+        "Какую нагрузку способен выдержать?",
+        "Что такое MergeTree, и в чем разница с ReplacingMergeTree и SummingMergeTree?",
+        "Как проектировать распределённые таблицы с использованием шардов и реплик?",
+        "Какие шаги предпринимать для оптимизации медленных запросов на миллиардах строк?",
+        "Как реализовать масштабирование и отказоустойчивость ClickHouse?",
+        "Что такое ClickHouse и для каких задач он оптимизирован?",
+        "В каких случаях не является оптимальным выбором?"
+      ]
+    },
+    {
+      "id": "nosql.elastic",
+      "title": "Elasticsearch",
+      "icon": "🔎",
+      "description": "Полнотекстовый поиск, анализаторы, шарды и реплики.",
+      "requires": [
+        "nosql.mongo"
+      ],
+      "questions": [
+        "Виды Analyzers в Elasticsearch?",
+        "Концепцию шардирования (shards) и реплик (replicas) в Elasticsearch?",
+        "Способы масштабирования в Elasticsearch?",
+        "Способы оптимизации производительности в Elasticsearch?",
+        "Устройство кластера и взаимодействие между нодами в Elasticsearch?",
+        "Назначение Elasticsearch?",
+        "Индексы в Elasticsearch?",
+        "Разница между mapping и schema в Elasticsearch?",
+        "Как происходит полнотекстовый поиск в Elasticsearch?",
+        "Разница между запросами match и term в Elasticsearch?",
+        "Как работает Query DSL в Elasticsearch и для чего он нужен?"
+      ]
+    }
+  ]
+}
