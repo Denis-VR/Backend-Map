@@ -61,23 +61,33 @@ button { cursor: pointer; }
 #world, #inner { transition: opacity .38s ease; }
 #map.fade-world #world, #map.fade-inner #inner { opacity: 0; }
 
-/* ---------- timeline map (XMind look) ---------- */
-.spine { fill: none; stroke: var(--c); stroke-width: 3.5; stroke-linecap: round; }
-.trunk { fill: none; stroke: var(--c); stroke-width: 2; stroke-linecap: round; }
-.conn { fill: none; stroke: var(--c); stroke-width: 1.15; stroke-opacity: .55; stroke-linejoin: round; }
-.link-req { fill: none; stroke: var(--gold); stroke-width: 1.6; stroke-opacity: .8; stroke-dasharray: 5 5; pointer-events: none; animation: flow 1.4s linear infinite; }
-@keyframes flow { to { stroke-dashoffset: -20; } }
+/* ---------- radial map ---------- */
+.dimmable [data-tree] { transition: opacity .3s; }
+.spoke { fill: none; stroke: var(--c); stroke-width: 3; stroke-linecap: round; stroke-opacity: .85; }
+.trunk { fill: none; stroke: var(--c); stroke-width: 1.8; stroke-linecap: round; stroke-opacity: .75; }
+.conn { fill: none; stroke: var(--c); stroke-width: 1.1; stroke-opacity: .42; }
+.sector { fill: none; stroke: var(--c); stroke-width: 5; stroke-linecap: round; stroke-opacity: .55; }
+.link-req { fill: none; stroke: var(--gold); stroke-width: 1.8; stroke-opacity: .85; stroke-dasharray: 6 6; pointer-events: none; animation: flow 1.4s linear infinite; }
+@keyframes flow { to { stroke-dashoffset: -24; } }
 
-.root-pill { cursor: pointer; }
-.root-pill .rp { fill: #0e1736; stroke: #2ea8e6; stroke-width: 2.5; }
-.root-pill text { font-size: 16px; font-weight: 700; fill: #fff; text-anchor: middle; pointer-events: none; }
-.root-pill .rp-sel { fill: none; stroke: var(--gold-hi); stroke-width: 1.5; stroke-dasharray: 3 3; opacity: 0; }
-.root-pill.sel .rp-sel { opacity: 1; }
+.root { cursor: pointer; }
+.root .rt { fill: #0e1736; stroke: #2ea8e6; stroke-width: 3; }
+.root .rt-halo { fill: none; stroke: #2ea8e6; stroke-opacity: .18; stroke-width: 1.2; stroke-dasharray: 2 6; }
+.root text { font-weight: 700; fill: #fff; text-anchor: middle; pointer-events: none; }
+.root .rt-sel { fill: none; stroke: var(--gold-hi); stroke-width: 1.5; stroke-dasharray: 3 4; opacity: 0; }
+.root.sel .rt-sel { opacity: 1; }
+
+/* topic names around the rim: constant size on screen, only while the whole circle is in view */
+.rim { cursor: pointer; opacity: 0; transition: opacity .25s; pointer-events: none; }
+.overview .rim { opacity: 1; pointer-events: auto; }
+.rim-t { font-size: calc(var(--rim-fs, 14px) * var(--ik, 1)); font-weight: 600; fill: #e9edf7; paint-order: stroke; stroke: var(--void); stroke-width: calc(4px * var(--ik, 1)); stroke-linejoin: round; }
+.rim-c { font-family: var(--font-mono); font-weight: 500; font-size: .78em; fill: var(--c); }
+.rim:hover .rim-n, .rim.sel .rim-n { fill: var(--c); }
 
 .stage { cursor: pointer; }
 .stage .st-disc { fill: var(--c); transition: filter .2s; }
 .stage:hover .st-disc { filter: brightness(1.1); }
-.stage .st-t { font-size: 13px; font-weight: 600; fill: #0a0f22; text-anchor: middle; pointer-events: none; }
+.stage .st-t { font-weight: 600; fill: #0a0f22; text-anchor: middle; pointer-events: none; }
 .stage .st-ring { fill: none; stroke: rgba(255, 255, 255, .1); stroke-width: 3; }
 .stage .st-prog { fill: none; stroke: var(--c); stroke-width: 3; stroke-linecap: round; }
 .stage .st-sel { fill: none; stroke: var(--gold-hi); stroke-width: 1.5; stroke-dasharray: 3 4; opacity: 0; }
@@ -88,7 +98,7 @@ button { cursor: pointer; }
 /* sections */
 .sec { cursor: pointer; }
 .sec .sb { fill: var(--pill); stroke: var(--c); stroke-width: 1.3; transition: fill .2s, stroke .2s; }
-.sec .sl { font-size: 12.5px; font-weight: 600; fill: #e9edf7; pointer-events: none; }
+.sec .sl { font-size: 13px; font-weight: 600; fill: #e9edf7; pointer-events: none; }
 .sec .sc { font-family: var(--font-mono); font-size: 10.5px; fill: var(--muted); pointer-events: none; }
 .sec .sb-sel { fill: none; stroke: var(--gold-hi); stroke-width: 1.5; stroke-dasharray: 3 3; opacity: 0; }
 .sec.sel .sb-sel { opacity: 1; }
@@ -108,7 +118,7 @@ button { cursor: pointer; }
 .qi .qhit { fill: transparent; }
 .qi:hover .qhit { fill: rgba(255, 255, 255, .05); }
 .qi.sel .qhit { fill: rgba(255, 255, 255, .06); stroke: var(--gold-hi); stroke-width: 1.2; }
-.qi .qt { font-size: 12px; fill: var(--lc, #dfe4f2); }
+.qi .qt { font-size: 12.5px; fill: var(--lc, #dfe4f2); }
 .qi .qc-hit { fill: transparent; }
 .qi .qc { fill: transparent; stroke: var(--lc, #9aa5c2); stroke-width: 1.3; opacity: .75; }
 .qi [data-check]:hover .qc { opacity: 1; stroke-width: 2; }
@@ -116,17 +126,21 @@ button { cursor: pointer; }
 .qi.known .qt { opacity: .5; }
 .qi .has-a { fill: var(--lc, #dfe4f2); opacity: .6; }
 .qi.tp .tb { fill: var(--pill); stroke: var(--lc, var(--c)); stroke-width: 1.1; stroke-opacity: .8; }
-.qi.tp .tt { font-size: 11.5px; font-weight: 600; fill: var(--lc, #e9edf7); }
+.qi.tp .tt { font-size: 12px; font-weight: 600; fill: var(--lc, #e9edf7); }
 .qi.tp.sel .tb { stroke: var(--gold-hi); stroke-width: 1.6; stroke-opacity: 1; }
 .imp circle { fill: #e5484d; }
 .imp text { font-size: 10px; font-weight: 700; fill: #fff; text-anchor: middle; pointer-events: none; }
 
 /* overview zoom: only the structure */
-.far .qi text, .far .sec .sc, .far .qi .imp { display: none; }
-.far .qi .qc { opacity: .5; }
+.qi .qb { display: none; fill: var(--lc, var(--c)); opacity: .8; }
+.far .qi text, .far .sec text, .far .qi .imp, .far .qi [data-check], .far .qi .has-a { display: none; }
+.far .qi .qb { display: inline; }
+.far .qi.known .qb { opacity: .35; }
+.far .sec .sb { stroke-width: 2.5; }
 
 /* search and difficulty filter */
 .searching .qi:not(.hit), .searching .sec:not(.hit), .searching .stage:not(.hit) { opacity: .2; }
+.far.searching .qi.hit .qb { fill: var(--gold-hi); opacity: 1; }
 .searching .hit .qhit, .searching .sec.hit .sb { stroke: var(--gold-hi); stroke-width: 1.4; }
 .qf-1 .qi:not([data-l="1"]), .qf-2 .qi:not([data-l="2"]), .qf-3 .qi:not([data-l="3"]), .qf-4 .qi:not([data-l="4"]), .qf-imp .qi:not([data-imp]),
 .qf-1 .it.k-q:not([data-l="1"]), .qf-2 .it.k-q:not([data-l="2"]), .qf-3 .it.k-q:not([data-l="3"]), .qf-4 .it.k-q:not([data-l="4"]), .qf-imp .it.k-q:not([data-imp]) { opacity: .13; }
@@ -456,6 +470,7 @@ details.edit summary:hover { color: var(--text); }
   #hint { display: none; }
 }
 @media (max-width: 640px) {
+  :root { --rim-fs: 11px; }
   #hud { top: 8px; left: 8px; right: 8px; gap: 6px; flex-wrap: wrap; }
   .brand { display: none; }
   #projectTitle { max-width: 120px; }

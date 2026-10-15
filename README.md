@@ -3,7 +3,7 @@
 # ◆ GameTree
 
 **A game-style skill tree for what you actually study.**
-One big map laid out like an XMind timeline: topics on a line, sections and questions branching off them.
+One big round map: the project in the middle, topics around it, sections and questions branching outward.
 Master a section, unlock the next ones, and come back to review what you learned.
 
 [![Deploy](https://github.com/Denis-VR/game-tree/actions/workflows/pages.yml/badge.svg)](https://github.com/Denis-VR/game-tree/actions/workflows/pages.yml)
@@ -14,7 +14,7 @@ Master a section, unlock the next ones, and come back to review what you learned
 
 [**Live demo**](https://denis-vr.github.io/game-tree/) · [Русская версия](README.ru.md) · [Data format](skills/gametree-trees/SKILL.md) · [Contributing](CONTRIBUTING.md)
 
-<img src="docs/images/map.webp" alt="GameTree: the backend developer map as an XMind-style timeline, questions colored by difficulty" width="100%">
+<img src="docs/images/map.webp" alt="GameTree: the backend developer map as one round mind map, questions colored by difficulty" width="100%">
 
 </div>
 

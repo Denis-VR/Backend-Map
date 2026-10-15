@@ -1,5 +1,6 @@
-/* GameTree: a skill map laid out like an XMind timeline. Topics sit on one line, sections branch off
- * every topic, questions branch off every section. A mind map opens inside every section.
+/* GameTree: one round mind map. The project sits in the middle, topics on a ring around it, sections
+ * and questions branching outward; every topic owns its own slice of the circle. The wheel turns so the
+ * topic you pick reads horizontally. A mind map opens inside every section.
  * Data: window.GAMETREE_PROJECTS (bundled by scripts/build.mjs).
  * Persistence: localStorage, plus the artifact `db` capability when the page runs on claude.ai. */
 (function () {
@@ -105,6 +106,8 @@
     idx: new Map(),       // section id -> {n, t}
     layout: null,
     view: { x: 0, y: 0, k: 0.5 },
+    focus: null, // the topic the map is turned to, the rest steps back
+    rot: 0, // the wheel's turn, radians: the topic in focus lies along the horizontal
     mapView: null,        // map view saved while inside a section
     sel: null,            // '__core' | 'stage:<tree id>' | section id | '<section id>|<question path>'
     selTree: null,
@@ -240,174 +243,229 @@
   }
   const textW = (t, font) => { mctx.font = font; return mctx.measureText(t).width; };
 
-  // ------------------------------------------------------------------ layout: XMind-style timeline
-  // Root pill on the left, a horizontal line through topic circles. Topics alternate up and down;
-  // each has a vertical trunk with section pills, and questions branch to the right of every section.
-  const F_Q = `400 12px ${FONT}`, F_TOPIC = `600 11.5px ${FONT}`, F_SEC = `600 12.5px ${FONT}`, F_CNT = `500 10.5px ${MONO}`;
-  const F_STAGE = `600 13px ${FONT}`, F_ROOT = `700 16px ${FONT}`;
-  const Q_LH = 16, Q_W = 260, T_W = 210, HGAP = 24, VGAP = 4, SGAP = 18, OFF = 104, STAGE_GAP = 60, SEC_DX = 26;
+  // ------------------------------------------------------------------ layout: radial mind map
+  // The root sits in the centre, topics on an inner ring, sections on a middle ring and questions on the
+  // outer ring. Every topic owns one sector of the circle. Labels run along the radius and are turned over
+  // on the left half, so they always read left to right.
+  const F_Q = `400 12.5px ${FONT}`, F_TOPIC = `600 12px ${FONT}`, F_SEC = `600 13px ${FONT}`, F_CNT = `500 10.5px ${MONO}`;
+  const F_STAGE = `600 13px ${FONT}`, F_ROOT = `700 19px ${FONT}`;
+  const SLOT = 19;          // px between neighbouring questions on the outer ring
+  const SEC_GAP = 1.2;      // empty slots between sections of one topic
+  const TOPIC_GAP = 3.5;    // empty slots between topics
+  const Q_H = 18, TP_H = 22, SEC_H = 26, Q_MAXW = 470, RING_GAP = 54, CHILD_GAP = 26;
+  // the middle of the map carries no text at reading zoom, so the root and the topic discs are sized
+  // against the circle itself: big enough to read when the whole map is on screen
+  function fitCircle(text, r, minFs, maxFs) {
+    for (let fs = maxFs; ; fs -= 1) {
+      const t = wrapText(text, `600 ${fs}px ${FONT}`, 2 * r - fs * 1.2);
+      if (fs <= minFs || (t.w <= 2 * r - fs && t.lines.length * fs * 1.18 <= 2 * r - fs)) return { fs, lines: t.lines };
+    }
+  }
+  const TAU = Math.PI * 2;
 
+  function clipText(text, font, maxW) {
+    if (textW(text, font) <= maxW) return text;
+    let s = text;
+    while (s.length > 8 && textW(s + '…', font) > maxW) s = s.slice(0, -1);
+    return s.trimEnd() + '…';
+  }
   function measureEntry(e, path, n, lvl, known) {
     const key = qKey(n.id, path), level = qLevel(e) || lvl, important = qImp(e);
     if (isTopic(e)) {
-      const t = wrapText(e.topic, F_TOPIC, T_W);
-      const it = { kind: 'topic', key, id: n.id, path, text: e.topic, level, important, lines: t.lines, pad: important ? 26 : 11 };
-      it.w = Math.ceil(it.pad + t.w + 11); it.h = t.lines.length * 15 + 8;
+      const it = { kind: 'topic', key, id: n.id, path, text: e.topic, level, important, pad: important ? 26 : 11 };
+      it.label = clipText(e.topic, F_TOPIC, Q_MAXW);
+      it.len = Math.ceil(it.pad + textW(it.label, F_TOPIC) + 11); it.th = TP_H;
       it.children = (e.items || []).map((c, i) => measureEntry(c, [...path, i], n, level, known));
       return it;
     }
-    const text = qText(e), t = wrapText(text, F_Q, Q_W);
-    const it = { kind: 'q', key, id: n.id, path, text, level, important, known: known.has(text), ans: !!qAns(e), lines: t.lines, children: [], pad: important ? 30 : 15 };
-    it.w = Math.ceil(it.pad + t.w + 6); it.h = t.lines.length * Q_LH + 4;
+    const text = qText(e);
+    const it = { kind: 'q', key, id: n.id, path, text, level, important, known: known.has(text), ans: !!qAns(e), children: [], pad: important ? 31 : 16 };
+    it.label = clipText(text, F_Q, Q_MAXW);
+    it.len = Math.ceil(it.pad + textW(it.label, F_Q) + 6); it.th = Q_H;
     return it;
   }
   function measureSection(n, t) {
     const st = qStats(n.id);
     const s = { kind: 'sec', key: n.id, id: n.id, text: n.title, cnt: st.total ? `${st.known}/${st.total}` : '' };
+    s.label = clipText(n.title, F_SEC, 300);
     const cw = s.cnt ? textW(s.cnt, F_CNT) : 0;
-    s.w = Math.ceil(14 + textW(n.title, F_SEC) + (cw ? 10 + cw : 0) + 14); s.h = 26;
+    s.len = Math.ceil(14 + textW(s.label, F_SEC) + (cw ? 10 + cw : 0) + 14); s.th = SEC_H;
     const known = knownSet(n.id);
     s.children = (n.questions || []).map((e, i) => measureEntry(e, [i], n, n.level || t.level || null, known));
     return s;
   }
-  function subH(it) {
-    if (!it.children.length) return (it.sub = it.h);
-    const s = it.children.reduce((a, c) => a + subH(c), 0) + VGAP * (it.children.length - 1);
-    return (it.sub = Math.max(it.h, s));
-  }
-  function placeTree(it, x, cy, out) {
-    it.x = x; it.y = cy - it.h / 2; out.push(it);
-    if (!it.children.length) return;
-    const total = it.children.reduce((a, c) => a + c.sub, 0) + VGAP * (it.children.length - 1);
-    let y = cy - total / 2;
-    const nx = x + it.w + HGAP;
-    for (const c of it.children) { placeTree(c, nx, y + c.sub / 2, out); y += c.sub + VGAP; }
+  const leafCount = it => (it.children.length ? it.children.reduce((a, c) => a + leafCount(c), 0) : 1);
+  const P = (r, a) => [r * Math.cos(a), r * Math.sin(a)];
+  // axis-aligned box of a label that lies along the ray at angle a, from radius r over len px
+  function radialBox(it) {
+    const c = Math.cos(it.a), s = Math.sin(it.a), h = it.th / 2;
+    const xs = [], ys = [];
+    for (const [u, v] of [[it.r, -h], [it.r, h], [it.r + it.len, -h], [it.r + it.len, h]]) { xs.push(u * c - v * s); ys.push(u * s + v * c); }
+    it.x = Math.min(...xs); it.y = Math.min(...ys); it.w = Math.max(...xs) - it.x; it.h = Math.max(...ys) - it.y;
   }
 
   function computeLayout() {
-    const items = new Map(), pos = new Map(), stages = [];
+    const items = new Map(), pos = new Map();
     const ct = S.project.center?.title || S.project.title;
-    const root = { kind: 'core', key: '__core', text: ct };
-    root.w = Math.ceil(textW(ct, F_ROOT) + 46); root.h = 46; root.x = 0; root.y = -root.h / 2;
-    items.set(root.key, root);
-    const sideRight = { '-1': root.w, '1': root.w };
-    let prev = { cx: root.w, r: 0 };
-    let bx0 = root.x, bx1 = root.w, by0 = root.y, by1 = -root.y;
-    S.project.trees.forEach((t, i) => {
-      const side = i % 2 === 0 ? -1 : 1;
+    const T = S.project.trees.map(t => {
       const secs = t.nodes.map(n => measureSection(n, t));
-      secs.forEach(subH);
-      const totalQ = t.nodes.reduce((a, n) => a + flatQ(n.questions).length, 0);
-      let r = clamp(24 + Math.sqrt(totalQ) * 3.2, 34, 62), tl;
-      for (;;) {
-        tl = wrapText(t.title, F_STAGE, 2 * r - 20);
-        if ((tl.w <= 2 * r - 14 && tl.lines.length * 15 <= 2 * r - 22) || r >= 76) break;
-        r += 3;
-      }
-      const cx = Math.round(Math.max(prev.cx + prev.r + r + STAGE_GAP, sideRight[side] + 56));
-      const H = secs.reduce((a, s) => a + s.sub, 0) + SGAP * Math.max(0, secs.length - 1);
-      let y = side < 0 ? -(OFF + H) : OFF;
-      const placed = [];
-      for (const s of secs) { placeTree(s, cx + SEC_DX, y + s.sub / 2, placed); y += s.sub + SGAP; }
-      let right = cx + r, y0 = -r, y1 = r;
-      for (const it of placed) {
-        it.tid = t.id; it.color = t.color;
-        right = Math.max(right, it.x + it.w); y0 = Math.min(y0, it.y); y1 = Math.max(y1, it.y + it.h);
-        items.set(it.key, it);
-      }
-      for (const s of secs) pos.set(s.id, { x: s.x + s.w / 2, y: s.y + s.h / 2 });
-      sideRight[side] = right;
-      const far = secs.length ? (side < 0 ? secs[0] : secs[secs.length - 1]) : null;
-      const st = { kind: 'stage', key: 'stage:' + t.id, tid: t.id, t, cx, r, side, lines: tl.lines, x: cx - r, y: -r, w: 2 * r, h: 2 * r, secs,
-        trunkEnd: far ? far.y + far.h / 2 : null, box: { x0: cx - r - 20, y0, x1: right, y1 } };
-      items.set(st.key, st);
-      stages.push(st);
-      prev = { cx, r };
-      bx1 = Math.max(bx1, right); by0 = Math.min(by0, y0); by1 = Math.max(by1, y1);
+      const need = secs.reduce((a, s) => a + leafCount(s), 0) + SEC_GAP * Math.max(0, secs.length - 1);
+      const q = t.nodes.reduce((a, n) => a + flatQ(n.questions).length, 0);
+      return { t, secs, q, need: Math.max(1, need) };
     });
-    S.layout = { root, stages, items, pos, bounds: { x0: bx0, y0: by0, x1: bx1, y1: by1 } };
+    const secLen = Math.max(120, ...T.flatMap(x => x.secs).map(s => s.len));
+    const qAvg = Math.max(1, T.reduce((a, x) => a + x.q, 0) / Math.max(1, T.length));
+    // ring radii: questions need SLOT px each on the outer ring; topic discs take room on the inner ring
+    let minSlots = 6, N = 1, RQ = 0, RS = 0, RT = 0, rootR = 120, rrMax = 80;
+    for (let i = 0; i < 8; i++) {
+      N = Math.max(1, T.reduce((a, x) => a + Math.max(x.need, minSlots), 0) + TOPIC_GAP * T.length);
+      RQ = Math.max(SLOT * N / TAU, secLen + 760);
+      RS = RQ - secLen - RING_GAP;
+      rootR = clamp(RS * 0.13, 90, 300);
+      const base = clamp(RS * 0.05, 42, 120);
+      for (const x of T) x.rr = Math.round(base * clamp(0.62 + 0.5 * Math.sqrt(x.q / qAvg), 0.62, 1.35));
+      rrMax = Math.max(...T.map(x => x.rr));
+      RT = clamp((rootR + RS) / 2, rootR + rrMax + 60, Math.max(rootR + rrMax + 60, RS - rrMax - 90));
+      minSlots = Math.ceil((2 * rrMax + 50) / (RT * TAU / N));
+    }
+    for (const x of T) { const f = fitCircle(x.t.title, x.rr, 11, Math.round(x.rr * 0.34)); x.fs = f.fs; x.lines = f.lines; }
+    const rf = fitCircle(ct, rootR, 16, Math.round(rootR * 0.3));
+    const root = { kind: 'core', key: '__core', text: ct, fs: rf.fs, lines: rf.lines, r: rootR, x: -rootR, y: -rootR, w: rootR * 2, h: rootR * 2 };
+    items.set(root.key, root);
+    const da = TAU / N;
+    let cursor = -Math.PI / 2 - (T.length ? Math.max(T[0].need, minSlots) * da / 2 : 0);
+    let outer = RQ;
+    const stages = [];
+    const place = (it, r, depth) => {
+      it.r = r; it.depth = depth;
+      radialBox(it);
+      outer = Math.max(outer, r + it.len);
+      for (const c of it.children) place(c, depth === 0 ? RQ : r + it.len + CHILD_GAP, depth + 1);
+    };
+    for (const x of T) {
+      const span = Math.max(x.need, minSlots), u = span / x.need, a0 = cursor;
+      let slot = 0;
+      // angles: leaves take one slot each, a parent sits in the middle of its children
+      const angle = it => {
+        if (!it.children.length) { it.a = a0 + (slot + 0.5) * u * da; slot += 1; return it.a; }
+        const as = it.children.map(angle);
+        return (it.a = (as[0] + as[as.length - 1]) / 2);
+      };
+      x.secs.forEach((s, i) => { if (i) slot += SEC_GAP; angle(s); });
+      const a = a0 + span * da / 2;
+      const placed = [];
+      const walk = it => { placed.push(it); it.children.forEach(walk); };
+      for (const s of x.secs) { place(s, RS, 0); walk(s); }
+      const [cx, cy] = P(RT, a);
+      const st = { kind: 'stage', key: 'stage:' + x.t.id, tid: x.t.id, t: x.t, a, a0, a1: a0 + span * da, cx, cy, r: x.rr, fs: x.fs, lines: x.lines, secs: x.secs,
+        x: cx - x.rr, y: cy - x.rr, w: 2 * x.rr, h: 2 * x.rr };
+      let bx0 = st.x, by0 = st.y, bx1 = st.x + st.w, by1 = st.y + st.h;
+      for (const it of placed) {
+        it.tid = x.t.id; it.color = x.t.color;
+        items.set(it.key, it);
+        bx0 = Math.min(bx0, it.x); by0 = Math.min(by0, it.y); bx1 = Math.max(bx1, it.x + it.w); by1 = Math.max(by1, it.y + it.h);
+      }
+      for (const s of x.secs) { const [px, py] = P(s.r + s.len / 2, s.a); pos.set(s.id, { x: px, y: py }); }
+      st.box = { x0: bx0, y0: by0, x1: bx1, y1: by1 };
+      st.rOut = Math.max(RQ, ...placed.map(it => it.r + it.len));
+      for (const sc of x.secs) {
+        const ls = []; const leaves = it => (it.children.length ? it.children.forEach(leaves) : ls.push(it)); leaves(sc);
+        const h = u * da / 2;
+        sc.a0 = Math.min(...ls.map(l => l.a)) - h; sc.a1 = Math.max(...ls.map(l => l.a)) + h;
+        sc.rOut = Math.max(sc.r + sc.len, ...ls.map(l => l.r + l.len));
+      }
+      items.set(st.key, st);
+      st.i = stages.length;
+      stages.push(st);
+      cursor += (span + TOPIC_GAP) * da;
+    }
+    const RL = outer + 70; // topic names around the rim, shown when the whole map is in view
+    const ext = RL + 24;
+    S.layout = { root, stages, items, pos, RQ, RS, RT, RL, rootR, bounds: { x0: -ext, y0: -ext, x1: ext, y1: ext } };
   }
 
   // ------------------------------------------------------------------ render: map
   const f1 = v => (Math.round(v * 10) / 10).toString();
-  // XMind "tree right" connectors: from the parent's right edge along a short bus to every child
-  function bracket(p, out) {
-    const px = p.x + p.w, py = p.y + p.h / 2, bx = px + 10;
-    for (const c of p.children) {
-      const cy = c.y + c.h / 2, x2 = c.x - 3, dy = cy - py;
-      if (Math.abs(dy) < 1.5) out.push(`M${f1(px)},${f1(py)}H${f1(x2)}`);
-      else {
-        const r = Math.min(6, Math.abs(dy)), s = Math.sign(dy);
-        out.push(`M${f1(px)},${f1(py)}H${f1(bx)}V${f1(cy - s * r)}Q${f1(bx)},${f1(cy)} ${f1(bx + r)},${f1(cy)}H${f1(x2)}`);
-      }
-      if (c.children.length) bracket(c, out);
-    }
-  }
+  const pt = (r, a) => { const [x, y] = P(r, a); return f1(x) + ',' + f1(y); };
+  const deg = a => f1(a * 180 / Math.PI);
+  // a branch from (r0, a0) out to (r1, a1) that leaves and arrives along the radius
+  const branch = (r0, a0, r1, a1) => { const m = (r0 + r1) / 2; return `M${pt(r0, a0)}C${pt(m, a0)} ${pt(m, a1)} ${pt(r1, a1)}`; };
+  const radialTf = it => `rotate(${deg(it.a)}) translate(${f1(it.r)},0)${it.flip ? ' rotate(180)' : ''}`;
+  const upright = () => (S.rot ? ` transform="rotate(${deg(-S.rot)})"` : ''); // keeps horizontal text level while the wheel is turned
 
   function rootSvg(r) {
-    return `<g class="root-pill" data-key="__core" data-core="1" transform="translate(${f1(r.x)},${f1(r.y)})">
-      <rect class="rp-sel" x="-5" y="-5" width="${r.w + 10}" height="${r.h + 10}" rx="14"/>
-      <rect class="rp" width="${r.w}" height="${r.h}" rx="10"/>
-      <text x="${f1(r.w / 2)}" y="${f1(r.h / 2 + 5.5)}">${esc(r.text)}</text></g>`;
+    const lh = r.fs * 1.18, top = -((r.lines.length - 1) * lh) / 2 + r.fs * 0.35;
+    return `<g class="root" data-key="__core" data-core="1" style="font-size:${r.fs}px">
+      <circle class="rt-sel" r="${f1(r.r + 9)}"/><circle class="rt-halo" r="${f1(r.r + 22)}"/><circle class="rt" r="${f1(r.r)}"/>
+      <text${upright()}>${r.lines.map((l, i) => `<tspan x="0" y="${f1(top + i * lh)}">${esc(l)}</tspan>`).join('')}</text></g>`;
   }
   function stageSvg(s) {
     const t = s.t, total = t.nodes.length, m = t.nodes.filter(n => isMastered(n.id)).length;
     const pct = total ? Math.round(100 * m / total) : 0;
-    const lh = 15, top = -((s.lines.length - 1) * lh) / 2 + 4.5;
-    return `<g class="stage${pct === 100 && total ? ' done' : ''}" data-key="${esc(s.key)}" data-tree="${esc(t.id)}" style="--c:${esc(t.color)}" transform="translate(${s.cx},0)">
+    const lh = s.fs * 1.18, top = -((s.lines.length - 1) * lh) / 2 + s.fs * 0.35;
+    return `<g class="stage${pct === 100 && total ? ' done' : ''}" data-key="${esc(s.key)}" data-tree="${esc(t.id)}" style="--c:${esc(t.color)};font-size:${s.fs}px" transform="translate(${f1(s.cx)},${f1(s.cy)})">
       <circle class="st-sel" r="${s.r + 9}"/>
       ${pct ? `<circle class="st-ring" r="${s.r + 4}"/><circle class="st-prog" r="${s.r + 4}" pathLength="100" stroke-dasharray="${pct} 100" transform="rotate(-90)"/>` : ''}
       <circle class="st-disc" r="${s.r}"/>
-      <text class="st-t">${s.lines.map((l, i) => `<tspan x="0" y="${f1(top + i * lh)}">${esc(l)}</tspan>`).join('')}</text></g>`;
+      <text class="st-t"${upright()}>${s.lines.map((l, i) => `<tspan x="0" y="${f1(top + i * lh)}">${esc(l)}</tspan>`).join('')}</text></g>`;
+  }
+  // the topic's name outside the rim, readable when the whole circle is on screen
+  function rimSvg(s) {
+    const L = S.layout, c = Math.cos(s.a + S.rot), sn = Math.sin(s.a + S.rot);
+    const anchor = c > 0.28 ? 'start' : c < -0.28 ? 'end' : 'middle';
+    // near the top and bottom the names would collide, so every other one steps out
+    const [x, y] = P(L.RL + (Math.abs(c) < 0.55 && s.i % 2 ? 46 : 0), s.a);
+    const total = flatQ(s.t.nodes.flatMap(n => n.questions || [])).length;
+    return `<g class="rim" data-tree="${esc(s.tid)}" style="--c:${esc(s.t.color)}" transform="translate(${f1(x)},${f1(y)})${S.rot ? ` rotate(${deg(-S.rot)})` : ''}">
+      <text class="rim-t" text-anchor="${anchor}" dy="${f1(sn * 0.6 + 0.35)}em"><tspan class="rim-n">${esc(s.t.title)}</tspan><tspan class="rim-c" dx=".5em">${total}</tspan></text></g>`;
   }
   function secSvg(s) {
-    const st = nodeState(s.id);
-    return `<g class="sec s-${st}" data-key="${esc(s.key)}" data-id="${esc(s.id)}" style="--c:${esc(s.color)}" transform="translate(${f1(s.x)},${f1(s.y)})">
-      <rect class="sb-sel" x="-4" y="-4" width="${s.w + 8}" height="${s.h + 8}" rx="${s.h / 2 + 4}"/>
-      <rect class="sb" width="${s.w}" height="${s.h}" rx="${s.h / 2}"/>
-      <text class="sl" x="14" y="17.5">${esc(s.text)}</text>
-      ${s.cnt ? `<text class="sc" x="${s.w - 13}" y="17" text-anchor="end">${s.cnt}</text>` : ''}
-      ${needsReview(s.id) ? `<circle class="due" cx="${s.w - 4}" cy="4" r="3.5"><title>Пора повторить</title></circle>` : ''}</g>`;
+    const st = nodeState(s.id), X = s.flip ? -1 : 1, a = s.flip ? 'end' : 'start', b = s.flip ? 'start' : 'end';
+    const x0 = s.flip ? -s.len : 0, h = s.th;
+    return `<g class="sec s-${st}" data-key="${esc(s.key)}" data-id="${esc(s.id)}" data-tree="${esc(s.tid)}" style="--c:${esc(s.color)}" transform="${radialTf(s)}">
+      <rect class="sb-sel" x="${x0 - 4}" y="${-h / 2 - 4}" width="${s.len + 8}" height="${h + 8}" rx="${h / 2 + 4}"/>
+      <rect class="sb" x="${x0}" y="${-h / 2}" width="${s.len}" height="${h}" rx="${h / 2}"/>
+      <text class="sl" x="${X * 14}" y="4.6" text-anchor="${a}">${esc(s.label)}</text>
+      ${s.cnt ? `<text class="sc" x="${X * (s.len - 13)}" y="4" text-anchor="${b}">${s.cnt}</text>` : ''}
+      ${needsReview(s.id) ? `<circle class="due" cx="${X * (s.len - 4)}" cy="${-h / 2 + 4}" r="3.5"><title>Пора повторить</title></circle>` : ''}</g>`;
   }
   function impSvg(x, y) { return `<g class="imp" transform="translate(${x},${y})"><circle r="6.2"/><text y="3.6">!</text></g>`; }
   function entrySvg(it) {
-    const lc = levelColor(it.level);
-    const attrs = `data-key="${esc(it.key)}" data-id="${esc(it.id)}" data-path="${it.path.join('.')}" data-l="${it.level || 0}"${it.important ? ' data-imp="1"' : ''}${lc ? ` style="--lc:${lc}"` : ''} transform="translate(${f1(it.x)},${f1(it.y)})"`;
+    const lc = levelColor(it.level), X = it.flip ? -1 : 1, a = it.flip ? 'end' : 'start', x0 = it.flip ? -it.len : 0;
+    const attrs = `data-key="${esc(it.key)}" data-id="${esc(it.id)}" data-tree="${esc(it.tid)}" data-path="${it.path.join('.')}" data-l="${it.level || 0}"${it.important ? ' data-imp="1"' : ''}${lc ? ` style="--lc:${lc}"` : ` style="--lc:${esc(it.color)}"`} transform="${radialTf(it)}"`;
+    const tip = it.label !== it.text ? `<title>${esc(it.text)}</title>` : '';
     if (it.kind === 'topic') {
-      return `<g class="qi tp" ${attrs}><rect class="tb" width="${it.w}" height="${it.h}" rx="${Math.min(it.h / 2, 9)}"/>
-        ${it.important ? impSvg(13, f1(it.h / 2)) : ''}
-        <text class="tt">${it.lines.map((l, i) => `<tspan x="${it.pad}" y="${f1(15 + i * 15)}">${esc(l)}</tspan>`).join('')}</text></g>`;
+      return `<g class="qi tp" ${attrs}>${tip}<rect class="tb" x="${x0}" y="${-it.th / 2}" width="${it.len}" height="${it.th}" rx="${it.th / 2}"/>
+        ${it.important ? impSvg(X * 13, 0) : ''}
+        <text class="tt" x="${X * it.pad}" y="4.2" text-anchor="${a}">${esc(it.label)}</text></g>`;
     }
-    return `<g class="qi q${it.known ? ' known' : ''}" ${attrs}><rect class="qhit" x="-4" y="-2" width="${it.w + 6}" height="${it.h + 4}" rx="5"/>
-      <g data-check="1"><circle class="qc-hit" cx="5" cy="10" r="8"/><circle class="qc" cx="5" cy="10" r="3.8"/></g>
-      ${it.important ? impSvg(19, 10) : ''}
-      <text class="qt">${it.lines.map((l, i) => `<tspan x="${it.pad}" y="${f1(14 + i * Q_LH)}">${esc(l)}</tspan>`).join('')}</text>
-      ${it.ans ? `<circle class="has-a" cx="${it.w + 1}" cy="5" r="2"><title>Есть ответ</title></circle>` : ''}</g>`;
+    const bw = Math.min(it.len - it.pad, 150);
+    return `<g class="qi q${it.known ? ' known' : ''}" ${attrs}>${tip}<rect class="qhit" x="${x0 - 3}" y="${-it.th / 2}" width="${it.len + 6}" height="${it.th}" rx="5"/>
+      <rect class="qb" x="${it.flip ? -(it.pad + bw) : it.pad}" y="-4" width="${f1(bw)}" height="8" rx="4"/>
+      <g data-check="1"><circle class="qc-hit" cx="${X * 6}" r="8"/><circle class="qc" cx="${X * 6}" r="3.8"/></g>
+      ${it.important ? impSvg(X * 20, 0) : ''}
+      <text class="qt" x="${X * it.pad}" y="4.3" text-anchor="${a}">${esc(it.label)}</text>
+      ${it.ans ? `<circle class="has-a" cx="${X * (it.len + 1)}" cy="-5" r="2"><title>Есть ответ</title></circle>` : ''}</g>`;
   }
 
   function renderMap() {
     const L = S.layout;
-    let eh = '', nh = rootSvg(L.root);
-    let px = L.root.x + L.root.w;
+    let eh = '', nh = '', rim = '';
     for (const s of L.stages) {
-      eh += `<path class="spine" style="--c:${esc(s.t.color)}" d="M${f1(px)},0H${f1(s.cx - s.r)}"/>`;
-      px = s.cx + s.r;
-    }
-    for (const s of L.stages) {
-      const lines = [];
-      if (s.secs.length) {
-        lines.push(`M${s.cx},${s.side * s.r}V${f1(s.trunkEnd)}`);
-        for (const sec of s.secs) lines.push(`M${s.cx},${f1(sec.y + sec.h / 2)}H${f1(sec.x)}`);
-      }
+      const spoke = `M${pt(L.rootR + 6, s.a)}L${pt(L.RT - s.r - 6, s.a)}`;
+      const trunks = s.secs.map(sec => branch(L.RT + s.r, s.a, sec.r, sec.a)).join('');
       const conn = [];
-      for (const sec of s.secs) if (sec.children.length) bracket(sec, conn);
-      eh += `<g style="--c:${esc(s.t.color)}">${lines.length ? `<path class="trunk" d="${lines.join('')}"/>` : ''}${conn.length ? `<path class="conn" d="${conn.join('')}"/>` : ''}</g>`;
-      nh += stageSvg(s);
-      const walk = it => { nh += it.kind === 'sec' ? secSvg(it) : entrySvg(it); it.children.forEach(walk); };
+      const walk = it => { for (const c of it.children) { conn.push(branch(it.r + it.len, it.a, c.r, c.a)); walk(c); } };
       s.secs.forEach(walk);
+      eh += `<g data-tree="${esc(s.tid)}" style="--c:${esc(s.t.color)}"><path class="sector" d="M${pt(L.RL - 34, s.a0)}A${f1(L.RL - 34)},${f1(L.RL - 34)} 0 ${s.a1 - s.a0 > Math.PI ? 1 : 0} 1 ${pt(L.RL - 34, s.a1)}"/>
+        <path class="spoke" d="${spoke}"/>${trunks ? `<path class="trunk" d="${trunks}"/>` : ''}${conn.length ? `<path class="conn" d="${conn.join('')}"/>` : ''}</g>`;
+      nh += stageSvg(s);
+      rim += rimSvg(s);
+      const draw = it => { it.flip = Math.cos(it.a + S.rot) < -1e-6; nh += it.kind === 'sec' ? secSvg(it) : entrySvg(it); it.children.forEach(draw); };
+      s.secs.forEach(draw);
     }
     L_EDGES.innerHTML = eh;
-    L_NODES.innerHTML = nh;
+    L_NODES.innerHTML = rootSvg(L.root) + nh + rim;
     markSel();
     applySearch();
   }
@@ -417,25 +475,37 @@
   function markSel() {
     $$('.sel, .req, .dep', L_NODES).forEach(el => el.classList.remove('sel', 'req', 'dep'));
     L_LINK.innerHTML = '';
-    if (!S.sel || !S.layout) return;
+    if (!S.sel || !S.layout) { setFocus(null); return; }
+    const it = S.layout.items.get(S.sel);
+    setFocus(S.searchKeys ? null : (it && (it.tid || (it.kind === 'stage' && it.t.id))) || null);
     const el = L_NODES.querySelector(`[data-key="${CSS.escape(S.sel)}"]`);
     if (el) el.classList.add('sel');
+    if (S.selTree) L_NODES.querySelector(`.rim[data-tree="${CSS.escape(S.selTree)}"]`)?.classList.add('sel');
     if (selKind() !== 'sec') return;
-    const { n } = S.idx.get(S.sel), b = S.layout.pos.get(S.sel);
+    const { n } = S.idx.get(S.sel);
     let h = '';
+    // prerequisites: a curve that bends toward the centre, so it does not cross the labels
     const link = (from, to, cls) => {
       const a = S.layout.pos.get(from), c = S.layout.pos.get(to); if (!a || !c) return;
-      const lift = Math.min(260, 60 + Math.abs(c.x - a.x) * 0.18);
-      const cy = Math.min(a.y, c.y) - lift;
-      h += `<path class="${cls}" d="M${f1(a.x)},${f1(a.y)} C${f1(a.x)},${f1(cy)} ${f1(c.x)},${f1(cy)} ${f1(c.x)},${f1(c.y)}"/>`;
+      const mx = (a.x + c.x) * 0.3, my = (a.y + c.y) * 0.3;
+      h += `<path class="${cls}" d="M${f1(a.x)},${f1(a.y)} Q${f1(mx)},${f1(my)} ${f1(c.x)},${f1(c.y)}"/>`;
     };
     for (const r of [...reqs(n), ...reqsAny(n)]) { link(r, S.sel, 'link-req'); L_NODES.querySelector(`.sec[data-id="${CSS.escape(r)}"]`)?.classList.add('req'); }
     for (const d of dependents(S.sel)) L_NODES.querySelector(`.sec[data-id="${CSS.escape(d)}"]`)?.classList.add('dep');
-    if (b) L_LINK.innerHTML = h;
+    L_LINK.innerHTML = h;
+  }
+  // while one topic is in focus the rest of the circle steps back, so the branch reads on its own
+  const focusStyle = document.createElement('style');
+  document.head.appendChild(focusStyle);
+  function setFocus(tid) {
+    if (S.focus === tid) return;
+    S.focus = tid;
+    focusStyle.textContent = tid ? `#map .dimmable [data-tree]:not([data-tree="${CSS.escape(tid)}"]) { opacity: .16; }` : '';
   }
   function applySearch() {
     const keys = S.searchKeys;
     svg.classList.toggle('searching', !!keys);
+    if (keys) setFocus(null);
     $$('.hit', L_NODES).forEach(el => el.classList.remove('hit'));
     if (keys) keys.forEach(k => L_NODES.querySelector(`[data-key="${CSS.escape(k)}"]`)?.classList.add('hit'));
   }
@@ -470,8 +540,10 @@
   }
   function applyView() {
     const v = S.view;
-    (S.inner ? innerG : world).setAttribute('transform', `translate(${v.x.toFixed(2)},${v.y.toFixed(2)}) scale(${v.k.toFixed(4)})`);
+    (S.inner ? innerG : world).setAttribute('transform', `translate(${v.x.toFixed(2)},${v.y.toFixed(2)}) scale(${v.k.toFixed(4)})${S.inner ? '' : ` rotate(${(S.rot * 180 / Math.PI).toFixed(3)})`}`);
     svg.classList.toggle('far', !S.inner && v.k < 0.3);
+    svg.classList.toggle('overview', !S.inner && v.k < 0.42);
+    svg.style.setProperty('--ik', f1(1 / v.k));
     drawStars();
     positionInline();
   }
@@ -480,16 +552,23 @@
   function stopView() { cancelAnimationFrame(viewAnim); if (viewDone) { const r = viewDone; viewDone = null; r(); } }
   function animateView(target, ms = 520, ease = 'out') {
     stopView();
-    if (reduceMotion() || ms <= 0) { S.view = { ...target }; applyView(); return Promise.resolve(); }
-    const from = { ...S.view }, t0 = performance.now();
+    if (reduceMotion() || ms <= 0) {
+      const turn = target.rot != null && target.rot !== S.rot;
+      S.view = { x: target.x, y: target.y, k: target.k }; if (turn) S.rot = target.rot;
+      applyView(); if (turn && !S.inner) renderMap();
+      return Promise.resolve();
+    }
+    const from = { ...S.view }, t0 = performance.now(), r0 = S.rot, r1 = target.rot != null ? target.rot : S.rot;
+    const turned = () => { if (r1 !== r0 && !S.inner) renderMap(); };
     const fn = ease === 'in' ? p => p * p * p : ease === 'inout' ? p => (p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2) : p => 1 - Math.pow(1 - p, 3);
     return new Promise(res => {
       viewDone = res;
       const step = t => {
         const p = Math.min(1, (t - t0) / ms), e = fn(p);
         S.view = { x: from.x + (target.x - from.x) * e, y: from.y + (target.y - from.y) * e, k: from.k + (target.k - from.k) * e };
+        S.rot = r0 + (r1 - r0) * e;
         applyView();
-        if (p < 1) viewAnim = requestAnimationFrame(step); else { viewDone = null; res(); }
+        if (p < 1) viewAnim = requestAnimationFrame(step); else { viewDone = null; turned(); res(); }
       };
       viewAnim = requestAnimationFrame(step);
     });
@@ -503,12 +582,24 @@
       if (isNarrow()) box.h = Math.max(160, pr.top - r.top);
       else box.w = Math.max(200, pr.left - r.left);
     }
+    const lg = $('#legend');
+    if (!isNarrow() && !S.inner && !lg.classList.contains('collapsed')) {
+      const lr = lg.getBoundingClientRect(), cut = Math.max(0, lr.right - r.left + 8);
+      if (box.w - cut > 360) { box.x += cut; box.w -= cut; }
+    }
     return box;
   }
-  function viewFor(x, y, k) {
-    const b = viewport();
-    return { k, x: b.x + b.w / 2 - x * k, y: b.y + b.h / 2 + (isNarrow() ? 30 : 10) - y * k };
+  // world point -> the wheel's turned frame (the inner mind map never turns)
+  function turnPt(x, y, rot = S.rot) {
+    if (S.inner || !rot) return [x, y];
+    const c = Math.cos(rot), s = Math.sin(rot);
+    return [x * c - y * s, x * s + y * c];
   }
+  function viewForT(tx, ty, k) {
+    const b = viewport();
+    return { k, x: b.x + b.w / 2 - tx * k, y: b.y + b.h / 2 + (isNarrow() ? 30 : 10) - ty * k };
+  }
+  const viewFor = (x, y, k) => viewForT(...turnPt(x, y), k);
   const flyTo = (x, y, k, ms, ease) => animateView(viewFor(x, y, k), ms, ease);
   function flyToBox(bx, maxK = 1) {
     const b = viewport();
@@ -516,25 +607,34 @@
     const k = clamp(Math.min(b.w / w, (b.h - 110) / h), 0.12, maxK);
     return flyTo((bx.x0 + bx.x1) / 2, (bx.y0 + bx.y1) / 2, k);
   }
-  function fitAll(animate = true) {
-    const bx = S.layout.bounds, b = viewport();
-    const k = clamp(Math.min(b.w / (bx.x1 - bx.x0 + 120), (b.h - 120) / (bx.y1 - bx.y0 + 80)), 0.02, 1);
-    const v = viewFor((bx.x0 + bx.x1) / 2, (bx.y0 + bx.y1) / 2, k);
-    return animate ? animateView(v) : animateView(v, 0);
+  // Turn the wheel so the angle a lies along the horizontal (whichever side is nearer), then show the
+  // ring band r0..r1 of the sector a0..a1 as large as the screen allows.
+  function turnTo(a, a0, a1, r0, r1, minK = 0.75, maxK = 1) {
+    let rot = -a;
+    if (Math.cos(a + S.rot) < 0) rot += Math.PI;
+    rot = S.rot + Math.atan2(Math.sin(rot - S.rot), Math.cos(rot - S.rot));
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (let i = 0; i <= 12; i++) {
+      const ang = a0 + (a1 - a0) * i / 12;
+      for (const r of [r0, r1]) {
+        const [x, y] = turnPt(r * Math.cos(ang), r * Math.sin(ang), rot);
+        x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y);
+      }
+    }
+    const b = viewport();
+    const k = clamp(Math.min(b.w / (x1 - x0 + 60), (b.h - 100) / (y1 - y0 + 60)), minK, maxK);
+    // too tall for the screen: keep the inner end (the sections) in view and let the rest scroll
+    return animateView({ ...viewForT((x0 + x1) / 2, (y0 + y1) / 2, k), rot }, 650, 'inout');
   }
-  // The start of the line: the root and the first topics, sized to fit their height.
+  const fitAll = (animate = true) => startView(animate);
+  // The whole circle, upright.
   function startView(animate = false) {
-    const L = S.layout, b = viewport();
-    const first = L.stages.slice(0, 2);
-    let y0 = L.root.y, y1 = -L.root.y;
-    for (const s of first) { y0 = Math.min(y0, s.box.y0); y1 = Math.max(y1, s.box.y1); }
-    const top = isNarrow() ? 110 : 64, bottom = 24;
-    const k = clamp((b.h - top - bottom) / (y1 - y0 + 40), isNarrow() ? 0.4 : 0.5, 0.95);
-    let vy = top + (b.h - top - bottom - (y1 - y0) * k) / 2 - y0 * k;
-    if ((y1 - y0) * k > b.h - top - bottom) vy = top + (b.h - top - bottom) / 2; // keep the line in the middle
-    // keep the root clear of the legend on the left
-    const lg = $('#legend').getBoundingClientRect(), left = !isNarrow() && !app.classList.contains('inner-mode') ? lg.right + 24 : 16;
-    const v = { k, x: left - L.root.x * k, y: vy };
+    const bx = S.layout.bounds, b = viewport();
+    // the topic names on the rim keep their size on screen, so they need room in screen pixels
+    const mx = isNarrow() ? 84 : 150, my = isNarrow() ? 30 : 42;
+    const top = isNarrow() ? 96 : 64, h = b.h - top - 30;
+    const k = clamp(Math.min((b.w - 2 * mx) / (bx.x1 - bx.x0), (h - 2 * my) / (bx.y1 - bx.y0)), 0.02, 1);
+    const v = { k, x: b.x + b.w / 2 - ((bx.x0 + bx.x1) / 2) * k, y: top + h / 2 - ((bx.y0 + bx.y1) / 2) * k, rot: 0 };
     return animate ? animateView(v) : animateView(v, 0);
   }
   function zoomAt(f, sx, sy) {
@@ -544,12 +644,13 @@
     applyView();
   }
   function zoomCenter(f) { const b = viewport(); zoomAt(f, b.x + b.w / 2, b.y + b.h / 2); }
-  function toScreen(x, y) { const r = svg.getBoundingClientRect(); return { x: r.left + S.view.x + x * S.view.k, y: r.top + S.view.y + y * S.view.k }; }
+  function toScreen(x, y) { const r = svg.getBoundingClientRect(), [tx, ty] = turnPt(x, y); return { x: r.left + S.view.x + tx * S.view.k, y: r.top + S.view.y + ty * S.view.k }; }
   // Pan just enough to show a world-space box.
   function ensureVisible(x, y, w = 0, h = 0) {
     const b = viewport(), r = svg.getBoundingClientRect(), m = 60;
-    const a = toScreen(x, y), z = toScreen(x + w, y + h);
-    const ax = a.x - r.left, ay = a.y - r.top, zx = z.x - r.left, zy = z.y - r.top;
+    const cs = [toScreen(x, y), toScreen(x + w, y), toScreen(x, y + h), toScreen(x + w, y + h)];
+    const ax = Math.min(...cs.map(c => c.x)) - r.left, ay = Math.min(...cs.map(c => c.y)) - r.top;
+    const zx = Math.max(...cs.map(c => c.x)) - r.left, zy = Math.max(...cs.map(c => c.y)) - r.top;
     let dx = 0, dy = 0;
     if (ax < b.x + m) dx = b.x + m - ax; else if (zx > b.x + b.w - m) dx = Math.max(b.x + b.w - m - zx, b.x + m - ax);
     if (ay < b.y + m + 40) dy = b.y + m + 40 - ay; else if (zy > b.y + b.h - m) dy = Math.max(b.y + b.h - m - zy, b.y + m + 40 - ay);
@@ -559,10 +660,9 @@
   function ensureItemVisible(key) {
     const it = S.layout && S.layout.items.get(key); if (!it) return Promise.resolve();
     if (S.view.k < 0.45) {
-      const b = viewport();
-      return animateView(viewFor(it.x + it.w / 2 + Math.min(200, b.w / 4), it.y + it.h / 2, 0.75), 420);
+      return animateView(viewFor(it.x + it.w / 2, it.y + it.h / 2, 0.8), 420);
     }
-    return ensureVisible(it.x, it.y, Math.min(it.w, 420), it.h);
+    return ensureVisible(it.x, it.y, it.w, it.h);
   }
 
   // ------------------------------------------------------------------ undo / redo (project snapshots)
@@ -610,9 +710,9 @@
     if (q) return { kind: target.closest('[data-check]') ? 'qcheck' : 'q', id: q.dataset.id, path: parsePath(q.dataset.path) };
     const g = target.closest('.sec');
     if (g) return { kind: 'node', id: g.dataset.id };
-    const st = target.closest('.stage');
+    const st = target.closest('.stage, .rim');
     if (st) return { kind: 'stage', tid: st.dataset.tree };
-    if (target.closest('.root-pill')) return { kind: 'core' };
+    if (target.closest('.root')) return { kind: 'core' };
     return { kind: 'empty' };
   }
   const hitKey = h => h.kind + ':' + (h.id || h.tid || '') + (h.path ? '|' + h.path.join('.') : '');
@@ -819,7 +919,11 @@
   }
   function navMap(key) {
     if (!S.sel || !S.layout.items.has(S.sel)) { selectCore(); return; }
-    const anchor = it => ({ x: it.kind === 'stage' ? it.cx : it.x + Math.min(it.w, 60) / 2, y: it.y + it.h / 2 });
+    // compare positions as they look on screen, with the wheel turned
+    const anchor = it => {
+      const [x, y] = it.r != null && it.a != null && it.kind !== 'stage' ? [(it.r + 20) * Math.cos(it.a), (it.r + 20) * Math.sin(it.a)] : [it.x + it.w / 2, it.y + it.h / 2];
+      const [tx, ty] = turnPt(x, y); return { x: tx, y: ty };
+    };
     const cur = anchor(S.layout.items.get(S.sel));
     const cands = [...S.layout.items.values()].map(it => ({ it, ...anchor(it) }));
     const b = spatialPick(cur, cands, key);
@@ -931,7 +1035,6 @@
     showCtx(x, y, [
       { label: 'Новая тема в конце', run: () => addTree() },
       '-',
-      { label: 'К началу линии', run: () => startView(true) },
       { label: 'Показать всю карту', kbd: '0', run: () => fitAll() },
       { label: 'Отменить', kbd: 'Ctrl Z', disabled: !S.undo.length, run: undo },
       { label: 'Управление', kbd: '?', run: showHelp }
@@ -955,12 +1058,22 @@
   function positionInline() {
     if (!editing) return;
     const b = editing.box(); if (!b) return;
-    const k = S.view.k, s = toScreen(b.x, b.y);
-    if (editing.align === 'center') {
-      const w = Math.max(200, b.w * k + 24);
+    const k = S.view.k;
+    if (b.a != null && b.len != null) { // a label along the radius: open the editor level, over its screen box
+      const c = Math.cos(b.a), sn = Math.sin(b.a), pts = [[b.r, -b.th / 2], [b.r + b.len, b.th / 2], [b.r, b.th / 2], [b.r + b.len, -b.th / 2]].map(([u, v]) => toScreen(u * c - v * sn, u * sn + v * c));
+      const x0 = Math.min(...pts.map(p => p.x)), x1 = Math.max(...pts.map(p => p.x)), cy = pts.reduce((a, p) => a + p.y, 0) / 4;
+      const w = Math.max(240, Math.min(420, x1 - x0 + 24));
       inl.style.width = w + 'px';
-      inl.style.left = (s.x + b.w * k / 2 - w / 2) + 'px';
-      inl.style.top = (s.y + b.h * k / 2 - 17) + 'px';
+      inl.style.left = clamp((x0 + x1) / 2 - w / 2, 8, window.innerWidth - w - 8) + 'px';
+      inl.style.top = (cy - 17) + 'px';
+      return;
+    }
+    const s = toScreen(b.x, b.y);
+    if (editing.align === 'center') {
+      const w = Math.max(200, b.w * k + 24), c = toScreen(b.x + b.w / 2, b.y + b.h / 2);
+      inl.style.width = w + 'px';
+      inl.style.left = (c.x - w / 2) + 'px';
+      inl.style.top = (c.y - 17) + 'px';
     } else {
       const w = Math.max(240, Math.min(420, b.w * k + 24));
       inl.style.width = w + 'px';
@@ -1333,7 +1446,6 @@
     const z = e.target.closest('[data-zoom]'); if (!z) return;
     const a = z.dataset.zoom;
     if (a === 'fit') S.inner ? fitInner() : fitAll();
-    else if (a === 'start') { if (S.inner) exitInner(); else startView(true); }
     else if (a === 'in') zoomCenter(1.3);
     else if (a === 'out') zoomCenter(1 / 1.3);
     else if (a === 'undo') undo();
@@ -1384,7 +1496,7 @@
     S.sel = id; S.selTree = null;
     renderNodePanel(id);
     afterSelect();
-    if (opts.fly) { const p = S.layout.pos.get(id), it = S.layout.items.get(id); flyTo(p.x + Math.min(it.w / 2 + 160, viewport().w / 4), p.y, Math.max(S.view.k, 0.85)); }
+    if (opts.fly) { const it = S.layout.items.get(id); turnTo(it.a, it.a0, it.a1, it.r - 30, Math.min(it.rOut, S.layout.RQ + 380) + 20, 0.8); }
   }
   function selectMapQ(id, path, opts = {}) {
     if (!path.length) { selectNode(id, opts); return; }
@@ -1392,7 +1504,7 @@
     S.sel = qKey(id, path); S.selTree = null;
     renderQPanel(id, path);
     afterSelect();
-    if (opts.fly) { const it = S.layout.items.get(S.sel); if (it) flyTo(it.x + Math.min(it.w, 300) / 2, it.y + it.h / 2, Math.max(S.view.k, 0.95)); }
+    if (opts.fly) { const it = S.layout.items.get(S.sel); if (it) turnTo(it.a, it.a - 0.04, it.a + 0.04, it.r - 140, it.r + Math.min(it.len, 420) + 20, 0.95); }
   }
   function selectCore() {
     S.sel = '__core'; S.selTree = null;
@@ -1408,7 +1520,7 @@
     S.selTree = tid; S.sel = 'stage:' + tid;
     renderTreePanel(tid); afterSelect();
     const st = S.layout.items.get('stage:' + tid);
-    if (opts.fly !== false && st) flyToBox(st.box, 0.9);
+    if (opts.fly !== false && st) turnTo(st.a, st.a0, st.a1, S.layout.RS - 30, Math.min(st.rOut, S.layout.RQ + 380) + 20, 0.72);
   }
 
   const STATE_LABEL = { locked: 'Закрыт', available: 'Доступен', learning: 'Изучаю', mastered: 'Освоен' };
@@ -1741,7 +1853,7 @@
       <details class="edit"><summary>Изменить карту</summary>
         <form class="form" id="projForm2">
           <div class="field-row"><label class="field"><span>Название карты</span><input id="pp-title" value="${esc(p.title)}" required></label>
-            <label class="field"><span>Начало линии</span><input id="pp-center" value="${esc(p.center?.title || '')}" maxlength="24"></label></div>
+            <label class="field"><span>Название в центре</span><input id="pp-center" value="${esc(p.center?.title || '')}" maxlength="24"></label></div>
           <label class="field"><span>Описание</span><textarea id="pp-desc">${esc(p.description || '')}</textarea></label>
           <div class="p-actions"><button class="btn primary" type="submit">Сохранить</button></div>
         </form></details>`);
@@ -2046,7 +2158,7 @@
   function savePrefs() { Store.set('prefs', S.prefs); }
 
   // Edits of a built-in map are stored as a full copy. A copy of an older format of the built-in map
-  // (before the XMind timeline) is replaced by the new map; progress is kept by section id.
+  // (before the round map) is replaced by the new map; progress is kept by section id.
   function upgradeSaved(saved, base) {
     if (!saved || !base) return saved;
     if (saved.baseRev && (saved.schema || 1) >= (base.schema || 1)) return saved;
@@ -2071,7 +2183,7 @@
     $('#revertBtn').hidden = !b;
     if (!opts.keepView) startView(false);
     S.prefs.last = id; savePrefs();
-    if (S.upgraded) { S.upgraded = false; Store.set('project-' + id, S.project); toast('Карта перестроена как в XMind', 'Прогресс по разделам сохранён'); }
+    if (S.upgraded) { S.upgraded = false; Store.set('project-' + id, S.project); toast('Карта перестроена в круг', 'Темы и вопросы из твоего XMind, прогресс по разделам сохранён'); }
     else if (b && saved && saved.baseRev && b.rev && saved.baseRev !== b.rev && !opts.keepView) toast('Вышла новая версия карты', 'Меню ⋯ → «Вернуть исходную карту», если хочешь её');
     return true;
   }
@@ -2403,7 +2515,7 @@
         ${row('Переименовать', 'F2, пробел или просто печатай')}${row('Удалить', 'Delete')}
         ${row('Переставить', 'Alt + стрелки')}${row('Меню действий', 'правый клик')}
         ${row('Сложность вопроса', '1 2 3 4')}${row('Важный вопрос', '!')}
-        ${row('Показать всё', '0')}${row('К началу линии', 'кнопка ⟵ внизу')}
+        ${row('Вся карта целиком', '0 или кнопка ⛶')}
         <h3>Мини-карта</h3>
         ${row('Подвопрос', 'Tab')}${row('Вопрос рядом', 'Enter')}
         ${row('Свернуть подтему', 'клик по ±')}${row('Назад к карте', 'Esc')}
@@ -2411,7 +2523,7 @@
         ${row('Отменить', 'Ctrl + Z')}${row('Повторить', 'Ctrl + Shift + Z')}
         ${row('Поиск', 'Ctrl + F или /')}${row('Эта справка', '?')}
       </div>
-      <p class="help-text">Карта читается как в XMind: темы идут по линии слева направо, от каждой темы отходят разделы, от разделов вопросы. Цвет вопроса это сложность: <b style="color:${LEVELS[1].c}">базовый</b>, <b style="color:${LEVELS[2].c}">средний</b>, <b style="color:${LEVELS[3].c}">сложный</b>, <b style="color:${LEVELS[4].c}">эксперт</b>. Красный «!» отмечает важные вопросы. В легенде слева можно оставить на карте только одну сложность или только важные.</p>
+      <p class="help-text">Карта круглая: в центре проект, вокруг темы, от каждой темы расходятся разделы, а от разделов вопросы. Когда выбираешь тему, круг поворачивается к ней, и её ветка читается слева направо, а остальные уходят на второй план. Названия тем видны по краю, когда карта показана целиком. Цвет вопроса это сложность: <b style="color:${LEVELS[1].c}">базовый</b>, <b style="color:${LEVELS[2].c}">средний</b>, <b style="color:${LEVELS[3].c}">сложный</b>, <b style="color:${LEVELS[4].c}">эксперт</b>. Красный «!» отмечает важные вопросы. В легенде слева можно оставить на карте только одну сложность или только важные.</p>
       <p class="help-text">Раздел открывается, когда освоены все его требования. Вопрос с отметкой «знаю» даёт 10 XP, освоенный раздел 100. Через ${REVIEW_AFTER_DAYS} день после освоения у раздела появляется золотая точка: пора повторить.</p>
       <div class="p-actions"><button class="btn primary" data-close>Понятно</button></div>`, 'wide');
   }

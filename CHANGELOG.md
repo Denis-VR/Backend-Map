@@ -2,8 +2,9 @@
 
 ## 0.3.0 — 2026-10-15
 
-- The map is now an XMind-style timeline instead of a radial star map: topics on one line from left to right,
-  alternating up and down, sections on a trunk above or below each topic, questions branching to the right.
+- The map is now one round mind map: the project in the middle, topics on a ring around it, each topic owning
+  a slice of the circle with its sections and questions branching outward. Picking a topic turns the wheel so
+  its branch reads left to right and the rest of the circle steps back; topic names sit around the rim.
 - The backend map follows the Java Interview mind map one to one: 19 topics, 102 sections, 593 questions.
   Progress on sections that already existed is kept.
 - Questions and subtopics have a difficulty `level` (1–4, colored like in XMind) and an `important` mark (red "!").
