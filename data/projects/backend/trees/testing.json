@@ -2,13 +2,12 @@
   "id": "testing",
   "title": "Тестирование",
   "color": "#e3b341",
-  "icon": "🧪",
   "description": "Виды тестов, JUnit, Mockito и тестирование Spring-приложений.",
   "nodes": [
     {
       "id": "test.basics",
       "title": "Виды тестирования",
-      "icon": "🧪",
+      "abbr": "QA",
       "description": "Пирамида тестов: unit, интеграционные, e2e, нагрузочные.",
       "keystone": true,
       "questions": [
@@ -20,7 +19,7 @@
     {
       "id": "test.junit",
       "title": "JUnit",
-      "icon": "✅",
+      "abbr": "JU5",
       "description": "JUnit 5: аннотации, жизненный цикл, параметризованные тесты.",
       "requires": [
         "test.basics",
@@ -29,15 +28,20 @@
       "questions": [
         "Какие различия между версиями JUnit4 и JUnit5?",
         "Какие основные аннотации в JUnit?",
-        "best-practive: Как измеряется покрытие кода тестами?",
-        "best-practive: Что за принцип \"минимизация внешних зависимостей\"?",
-        "best-practive: Что такое параметризация тестов?"
+        {
+          "topic": "best-practive",
+          "items": [
+            "Как измеряется покрытие кода тестами?",
+            "Что за принцип \"минимизация внешних зависимостей\"?",
+            "Что такое параметризация тестов?"
+          ]
+        }
       ]
     },
     {
       "id": "test.mockito",
       "title": "Mockito",
-      "icon": "🎭",
+      "abbr": "Mock",
       "description": "Моки, стабы, спаи, верификация вызовов и ограничения Mockito.",
       "requires": [
         "test.junit"
@@ -54,7 +58,7 @@
     {
       "id": "test.spring",
       "title": "Spring Boot Test",
-      "icon": "🧫",
+      "abbr": "Boot",
       "description": "@SpringBootTest, слайсы, тестовая БД и Testcontainers.",
       "requires": [
         "test.mockito",

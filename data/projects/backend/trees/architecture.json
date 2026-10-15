@@ -2,13 +2,12 @@
   "id": "architecture",
   "title": "Архитектура",
   "color": "#c69026",
-  "icon": "🏛️",
   "description": "Принципы проектирования, паттерны и микросервисы.",
   "nodes": [
     {
       "id": "arch.principles",
       "title": "Принципы проектирования",
-      "icon": "📐",
+      "abbr": "SOLID",
       "description": "SOLID, KISS, DRY, виды архитектур, масштабирование.",
       "requiresAny": [
         "java.oop",
@@ -35,7 +34,7 @@
     {
       "id": "arch.clean",
       "title": "Чистый код и рефакторинг",
-      "icon": "🧹",
+      "abbr": "Clean",
       "description": "Читаемый код, рефакторинг, чистая архитектура.",
       "requires": [
         "arch.principles"
@@ -48,42 +47,57 @@
     {
       "id": "arch.gof",
       "title": "Паттерны GoF",
-      "icon": "📚",
+      "abbr": "GoF",
       "description": "Порождающие, структурные и поведенческие паттерны.",
       "requires": [
         "arch.principles"
       ],
       "questions": [
         "Отличие декоратора от прокси",
-        "Пораждающие: Строитель (Builder) это?",
-        "Пораждающие: Фабричный метод (Factory Method) это?",
-        "Пораждающие: Одиночка (Singleton) это?",
-        "Пораждающие: Абстрактная фабрика (Abstract Factory) это?",
-        "Пораждающие: Прототип (Prototype) это?",
-        "Структурные: Декоратор (Decorator) это?",
-        "Структурные: Адаптер (Adapter) это?",
-        "Структурные: Мост (Bridge) это?",
-        "Структурные: Компоновщик (Composite) это?",
-        "Структурные: Фасад (Facade) это?",
-        "Структурные: Приспособленец (Flyweight) это?",
-        "Структурные: Заместитель (Proxy) это?",
-        "Поведенческие: Стратегия (Strategy) это?",
-        "Поведенческие: Цепочка обязанностей (Chain of responsibility) это?",
-        "Поведенческие: Команда (Command) это?",
-        "Поведенческие: Интерпретатор (Interpreter) это?",
-        "Поведенческие: Итератор (Iterator) это?",
-        "Поведенческие: Посредник (Mediator) это?",
-        "Поведенческие: Хранитель (Memento) это?",
-        "Поведенческие: Наблюдатель (Observer) это?",
-        "Поведенческие: Состояние (State) это?",
-        "Поведенческие: Шаблонный метод (Template method) это?",
-        "Поведенческие: Посетитель (Visitor) это?"
+        {
+          "topic": "Пораждающие",
+          "items": [
+            "Строитель (Builder) это?",
+            "Фабричный метод (Factory Method) это?",
+            "Одиночка (Singleton) это?",
+            "Абстрактная фабрика (Abstract Factory) это?",
+            "Прототип (Prototype) это?"
+          ]
+        },
+        {
+          "topic": "Структурные",
+          "items": [
+            "Декоратор (Decorator) это?",
+            "Адаптер (Adapter) это?",
+            "Мост (Bridge) это?",
+            "Компоновщик (Composite) это?",
+            "Фасад (Facade) это?",
+            "Приспособленец (Flyweight) это?",
+            "Заместитель (Proxy) это?"
+          ]
+        },
+        {
+          "topic": "Поведенческие",
+          "items": [
+            "Стратегия (Strategy) это?",
+            "Цепочка обязанностей (Chain of responsibility) это?",
+            "Команда (Command) это?",
+            "Интерпретатор (Interpreter) это?",
+            "Итератор (Iterator) это?",
+            "Посредник (Mediator) это?",
+            "Хранитель (Memento) это?",
+            "Наблюдатель (Observer) это?",
+            "Состояние (State) это?",
+            "Шаблонный метод (Template method) это?",
+            "Посетитель (Visitor) это?"
+          ]
+        }
       ]
     },
     {
       "id": "arch.profiling",
       "title": "Профилирование",
-      "icon": "🩺",
+      "abbr": "Prof",
       "description": "Профайлеры, heap и thread dump, поиск узких мест.",
       "requiresAny": [
         "java.jvm",
@@ -103,7 +117,7 @@
     {
       "id": "arch.performance",
       "title": "Производительность и CAP",
-      "icon": "📈",
+      "abbr": "CAP",
       "description": "Оценки нагрузки, CAP-теорема, выбор хранилища.",
       "requires": [
         "arch.profiling",
@@ -112,16 +126,21 @@
       "questions": [
         "Какие есть виды оценок и как их выполнять?",
         "Что такое CAP теорема и что выбирать?",
-        "Базы Данных: Преимущества и недостатки SQL бд?",
-        "Базы Данных: Преимущества и недостатки NoSQL бд?",
-        "Базы Данных: Зачем нужно индексирование БД?",
-        "Базы Данных: Зачем нужно партиционирование бд?"
+        {
+          "topic": "Базы Данных",
+          "items": [
+            "Преимущества и недостатки SQL бд?",
+            "Преимущества и недостатки NoSQL бд?",
+            "Зачем нужно индексирование БД?",
+            "Зачем нужно партиционирование бд?"
+          ]
+        }
       ]
     },
     {
       "id": "arch.microservices",
       "title": "Микросервисы",
-      "icon": "🧭",
+      "abbr": "MSA",
       "description": "Плюсы и минусы, разбиение на сервисы, истории падений.",
       "requires": [
         "arch.principles",
@@ -144,18 +163,23 @@
     {
       "id": "arch.ms-patterns",
       "title": "Паттерны микросервисов",
-      "icon": "🧱",
+      "abbr": "Ptrn",
       "description": "Декомпозиция, API composition, CQRS, database per service.",
       "requires": [
         "arch.microservices"
       ],
       "questions": [
         "CQRS что это?",
-        "Паттерны разбиение на сервисы: Как разделять сервисы по бизнес-функционалу?",
-        "Паттерны разбиение на сервисы: DDD (Domain-Driven Design) что это?",
-        "Паттерны разбиение на сервисы: Что такое выделение сервисов под команды разработки?",
-        "Паттерны разбиение на сервисы: Сервис со своим хранилищем и автономностью что это?",
-        "Паттерны разбиение на сервисы: Постепенное выделение функционала что это?",
+        {
+          "topic": "Паттерны разбиение на сервисы",
+          "items": [
+            "Как разделять сервисы по бизнес-функционалу?",
+            "DDD (Domain-Driven Design) что это?",
+            "Что такое выделение сервисов под команды разработки?",
+            "Сервис со своим хранилищем и автономностью что это?",
+            "Постепенное выделение функционала что это?"
+          ]
+        },
         "Event Driving Systems что это?",
         "Data Replication что это?",
         "Многослойная архитектура (Layered, N-tier) что это?",
@@ -167,7 +191,7 @@
     {
       "id": "arch.integration",
       "title": "Saga, Outbox и интеграция",
-      "icon": "🔗",
+      "abbr": "Saga",
       "description": "Распределённые транзакции, идемпотентность, оркестрация.",
       "requires": [
         "arch.ms-patterns",
@@ -188,7 +212,7 @@
     {
       "id": "arch.discovery",
       "title": "Gateway и Discovery",
-      "icon": "🚪",
+      "abbr": "GW",
       "description": "API Gateway, service discovery, Feign-клиенты.",
       "requires": [
         "arch.microservices"
@@ -211,7 +235,7 @@
     {
       "id": "arch.resilience",
       "title": "Отказоустойчивость",
-      "icon": "🛟",
+      "abbr": "CB",
       "description": "Circuit breaker, retry, bulkhead, Resilience4j.",
       "requires": [
         "arch.ms-patterns"
@@ -232,7 +256,7 @@
     {
       "id": "arch.security",
       "title": "Безопасность сервисов",
-      "icon": "🔐",
+      "abbr": "Auth",
       "description": "Keycloak, OAuth2, OIDC и паттерны безопасности.",
       "requires": [
         "arch.microservices"
@@ -253,7 +277,7 @@
     {
       "id": "arch.camunda",
       "title": "Camunda BPMN",
-      "icon": "🗺️",
+      "abbr": "BPMN",
       "description": "BPMN-процессы, компоненты Camunda, интеграция со Spring.",
       "requires": [
         "arch.integration",

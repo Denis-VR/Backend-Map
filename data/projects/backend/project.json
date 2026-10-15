@@ -4,8 +4,7 @@
   "title": "Backend-разработчик",
   "description": "Глобальная карта навыков бэкенд-разработчика на Java и Go. Собрана из твоей карты Java Interview.",
   "center": {
-    "title": "Backend",
-    "icon": "⚔️"
+    "title": "Backend"
   },
   "trees": [
     "java",

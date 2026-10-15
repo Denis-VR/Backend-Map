@@ -2,13 +2,12 @@
   "id": "data",
   "title": "Базы данных",
   "color": "#539bf5",
-  "icon": "🗄️",
   "description": "SQL, транзакции, ORM и NoSQL-хранилища.",
   "nodes": [
     {
       "id": "db.sql",
       "title": "SQL",
-      "icon": "🗄️",
+      "abbr": "SQL",
       "description": "Запросы, JOIN, группировки, нормализация. PostgreSQL как основная СУБД.",
       "keystone": true,
       "questions": [
@@ -27,7 +26,7 @@
     {
       "id": "db.objects",
       "title": "Объекты БД",
-      "icon": "🧱",
+      "abbr": "Obj",
       "description": "Представления, триггеры, процедуры, последовательности.",
       "requires": [
         "db.sql"
@@ -42,23 +41,33 @@
     {
       "id": "db.indexes",
       "title": "Индексы",
-      "icon": "📇",
+      "abbr": "Idx",
       "description": "B-tree, hash, GIN, составные индексы, EXPLAIN.",
       "requires": [
         "db.sql"
       ],
       "questions": [
-        "Btree: Как устроены Btree индексы?",
-        "Btree: Когда применять Btree индексы?",
-        "Hash: Как устроены hash индексы?",
-        "Hash: Когда применять hash индексы?",
+        {
+          "topic": "Btree",
+          "items": [
+            "Как устроены Btree индексы?",
+            "Когда применять Btree индексы?"
+          ]
+        },
+        {
+          "topic": "Hash",
+          "items": [
+            "Как устроены hash индексы?",
+            "Когда применять hash индексы?"
+          ]
+        },
         "Почему плохо создавать индексы на каждый солбец?"
       ]
     },
     {
       "id": "db.transactions",
       "title": "Транзакции",
-      "icon": "🔁",
+      "abbr": "ACID",
       "description": "ACID, уровни изоляции, аномалии, @Transactional.",
       "requires": [
         "db.sql"
@@ -70,21 +79,26 @@
         "Какие есть параметры @Transactional?",
         "Что акое Propagation в Hibernate?",
         "MogoDB",
-        "Postgres: Транзакции",
-        "Postgres: Принцип Acid и примеры реализаций",
-        "Postgres: Уровни изоляций транзакций",
-        "Postgres: Зачем индексы и что это",
-        "Postgres: Составной индекс?",
-        "Postgres: Как работает explain?",
-        "Postgres: Что такое первичный и вторичный индекс?",
-        "Postgres: Зачем нужны ключи",
-        "Postgres: Нормализация и нормальные формы?"
+        {
+          "topic": "Postgres",
+          "items": [
+            "Транзакции",
+            "Принцип Acid и примеры реализаций",
+            "Уровни изоляций транзакций",
+            "Зачем индексы и что это",
+            "Составной индекс?",
+            "Как работает explain?",
+            "Что такое первичный и вторичный индекс?",
+            "Зачем нужны ключи",
+            "Нормализация и нормальные формы?"
+          ]
+        }
       ]
     },
     {
       "id": "db.optimization",
       "title": "Оптимизация запросов",
-      "icon": "🚀",
+      "abbr": "Plan",
       "description": "План запроса, партиционирование, денормализация.",
       "requires": [
         "db.indexes"
@@ -99,7 +113,7 @@
     {
       "id": "db.migrations",
       "title": "Миграции (Liquibase)",
-      "icon": "🧬",
+      "abbr": "Mig",
       "description": "Версионирование схемы: Liquibase, Flyway, goose.",
       "requires": [
         "db.objects"
@@ -113,7 +127,7 @@
     {
       "id": "db.hibernate",
       "title": "Hibernate / JPA",
-      "icon": "🐻",
+      "abbr": "JPA",
       "description": "Сущности, жизненный цикл, кэши, N+1, ленивые связи.",
       "requires": [
         "db.sql",
@@ -138,7 +152,7 @@
     {
       "id": "db.locks",
       "title": "Блокировки",
-      "icon": "🔒",
+      "abbr": "Lock",
       "description": "Оптимистичные и пессимистичные блокировки, SELECT FOR UPDATE.",
       "requires": [
         "db.transactions",
@@ -153,7 +167,7 @@
     {
       "id": "nosql.redis",
       "title": "Redis",
-      "icon": "🟥",
+      "abbr": "Rds",
       "description": "Кэш, структуры данных, персистентность, кластеры.",
       "requires": [
         "db.sql"
@@ -172,7 +186,7 @@
     {
       "id": "nosql.mongo",
       "title": "MongoDB",
-      "icon": "🍃",
+      "abbr": "Mgo",
       "description": "Документная модель, индексы, шардирование, репликация.",
       "requires": [
         "db.indexes"
@@ -193,7 +207,7 @@
     {
       "id": "nosql.cassandra",
       "title": "Cassandra",
-      "icon": "👁️",
+      "abbr": "Cas",
       "description": "Wide-column, keyspace, уровни согласованности.",
       "requires": [
         "nosql.mongo",
@@ -212,7 +226,7 @@
     {
       "id": "nosql.clickhouse",
       "title": "ClickHouse",
-      "icon": "📊",
+      "abbr": "CH",
       "description": "Колоночная аналитика, MergeTree и его варианты.",
       "requires": [
         "db.optimization"
@@ -230,7 +244,7 @@
     {
       "id": "nosql.elastic",
       "title": "Elasticsearch",
-      "icon": "🔎",
+      "abbr": "ES",
       "description": "Полнотекстовый поиск, анализаторы, шарды и реплики.",
       "requires": [
         "nosql.mongo"

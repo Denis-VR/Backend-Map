@@ -23,6 +23,23 @@ export function loadProject(id) {
   return project;
 }
 
+// A question is a string, {q, a} or a topic {topic, items: [...]} whose items are questions again.
+function checkQuestions(list, fail, depth = 0) {
+  if (!Array.isArray(list)) { fail('questions must be an array'); return; }
+  for (const q of list) {
+    if (typeof q === 'string' || (q && typeof q.q === 'string')) continue;
+    if (q && typeof q.topic === 'string') {
+      if (depth > 4) fail(`topic "${q.topic}" is nested too deep`);
+      checkQuestions(q.items || [], fail, depth + 1);
+      continue;
+    }
+    fail('question must be a string, {q, a} or {topic, items}');
+  }
+}
+export function countQuestions(list) {
+  return (list || []).reduce((s, q) => s + (q && typeof q === 'object' && 'topic' in q ? countQuestions(q.items) : 1), 0);
+}
+
 export function validateProject(p) {
   const errors = [], warnings = [];
   const where = `[${p.id || '?'}]`;
@@ -42,9 +59,7 @@ export function validateProject(p) {
       if (ids.has(n.id)) errors.push(`${where} duplicate node id ${n.id}`);
       ids.set(n.id, n);
       if (!n.title) errors.push(`${where} node ${n.id}: title is required`);
-      for (const q of n.questions || []) {
-        if (!(typeof q === 'string' || (q && typeof q.q === 'string'))) errors.push(`${where} node ${n.id}: question must be a string or {q, a}`);
-      }
+      checkQuestions(n.questions || [], msg => errors.push(`${where} node ${n.id}: ${msg}`));
       for (const r of n.resources || []) if (!r.url) errors.push(`${where} node ${n.id}: resource without url`);
     }
   }
@@ -53,7 +68,7 @@ export function validateProject(p) {
       if (!ids.has(r)) errors.push(`${where} node ${n.id}: ${k} references unknown node ${r}`);
       if (r === n.id) errors.push(`${where} node ${n.id} requires itself`);
     }
-    if (!(n.questions || []).length) warnings.push(`${where} node ${n.id} has no questions`);
+    if (!countQuestions(n.questions || [])) warnings.push(`${where} node ${n.id} has no questions`);
   }
   // cycle check
   const state = new Map();

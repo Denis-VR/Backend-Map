@@ -2,13 +2,12 @@
   "id": "spring",
   "title": "Spring",
   "color": "#57ab5a",
-  "icon": "🌱",
   "description": "Экосистема Spring: от IoC-контейнера до облачных микросервисов.",
   "nodes": [
     {
       "id": "spring.core",
       "title": "Spring Core",
-      "icon": "🌱",
+      "abbr": "IoC",
       "description": "IoC и DI, бины, скоупы, жизненный цикл, прокси, циклические зависимости.",
       "requires": [
         "java.oop",
@@ -41,7 +40,7 @@
     {
       "id": "spring.aop",
       "title": "Spring AOP",
-      "icon": "✂️",
+      "abbr": "AOP",
       "description": "Аспекты, pointcut, advice и как они работают через прокси.",
       "requires": [
         "spring.core"
@@ -56,7 +55,7 @@
     {
       "id": "spring.mvc",
       "title": "Spring MVC",
-      "icon": "🌐",
+      "abbr": "MVC",
       "description": "DispatcherServlet, контроллеры, фильтры и интерсепторы.",
       "requires": [
         "spring.core",
@@ -70,7 +69,7 @@
     {
       "id": "spring.data",
       "title": "Spring Data",
-      "icon": "🗄️",
+      "abbr": "Repo",
       "description": "Репозитории, derived queries, JPQL и нативные запросы.",
       "requires": [
         "spring.core",
@@ -84,7 +83,7 @@
     {
       "id": "spring.security",
       "title": "Spring Security",
-      "icon": "🛡️",
+      "abbr": "Sec",
       "description": "Аутентификация и авторизация, JWT, OAuth2.",
       "requires": [
         "spring.mvc"
@@ -98,7 +97,7 @@
     {
       "id": "spring.actuator",
       "title": "Spring Actuator",
-      "icon": "📟",
+      "abbr": "Act",
       "description": "Health, metrics и служебные эндпоинты приложения.",
       "requires": [
         "spring.mvc"
@@ -111,7 +110,7 @@
     {
       "id": "spring.webflux",
       "title": "WebFlux и Reactive",
-      "icon": "⚡",
+      "abbr": "Flux",
       "description": "Reactor, неблокирующий веб-стек, R2DBC.",
       "requires": [
         "spring.mvc",
@@ -127,7 +126,7 @@
     {
       "id": "spring.ai",
       "title": "Spring AI",
-      "icon": "🤖",
+      "abbr": "AI",
       "description": "Абстракции для LLM, стриминг, Vector Store.",
       "requires": [
         "spring.mvc"
@@ -142,7 +141,7 @@
     {
       "id": "spring.cloud",
       "title": "Spring Cloud",
-      "icon": "☁️",
+      "abbr": "Cloud",
       "description": "Spring для микросервисов: интеграция с ELK, трассировка, облачные стартеры.",
       "requires": [
         "spring.mvc",
@@ -157,7 +156,7 @@
     {
       "id": "spring.config",
       "title": "Spring Cloud Config",
-      "icon": "🔧",
+      "abbr": "Cfg",
       "description": "Централизованная конфигурация сервисов.",
       "requires": [
         "spring.cloud"
@@ -174,7 +173,7 @@
     {
       "id": "spring.stream",
       "title": "Spring Cloud Stream",
-      "icon": "📨",
+      "abbr": "Strm",
       "description": "Событийные сервисы поверх Kafka и RabbitMQ.",
       "requires": [
         "spring.cloud",

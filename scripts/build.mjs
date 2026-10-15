@@ -3,6 +3,7 @@
 //   dist/artifact.html  page body without the document skeleton (claude.ai Artifact)
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { ROOT, listProjectIds, loadProject, validateProject } from './lib.mjs';
 
 const order = (() => {
@@ -14,6 +15,8 @@ const ids = listProjectIds().sort((a, b) => {
   return (ia < 0 ? 999 : ia) - (ib < 0 ? 999 : ib) || a.localeCompare(b);
 });
 const projects = ids.map(loadProject);
+// rev lets the app notice that a built-in map changed since the user saved their own copy
+for (const p of projects) p.rev = crypto.createHash('sha1').update(JSON.stringify(p)).digest('hex').slice(0, 10);
 let bad = false;
 for (const p of projects) {
   const { errors } = validateProject(p);

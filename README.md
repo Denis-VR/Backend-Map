@@ -7,7 +7,7 @@ One big interactive map: master a skill, unlock the next ones, and come back to 
 
 [![Deploy](https://github.com/Denis-VR/game-tree/actions/workflows/pages.yml/badge.svg)](https://github.com/Denis-VR/game-tree/actions/workflows/pages.yml)
 [![Validate](https://github.com/Denis-VR/game-tree/actions/workflows/validate.yml/badge.svg)](https://github.com/Denis-VR/game-tree/actions/workflows/validate.yml)
-[![License: MIT](https://img.shields.io/badge/license-MIT-f2c46d.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/license-MIT-d9b36c.svg)](LICENSE)
 ![No dependencies](https://img.shields.io/badge/dependencies-0-57ab5a.svg)
 [![Claude Code plugin](https://img.shields.io/badge/Claude%20Code-plugin-986ee2.svg)](#build-trees-with-claude)
 
@@ -31,20 +31,24 @@ map for Java and Go**: 10 branches, 97 skills and 645 self-check questions.
 - **Unlocking.** A skill opens when all of its prerequisites are mastered. Skills move through
   *locked → available → learning → mastered*, with XP and levels from Intern to Architect.
 - **Self-check questions.** Every skill has interview-style questions. Tick the ones you can answer.
+- **A mind map inside every skill.** Double-click a skill to dive in: its questions and subtopics open as an
+  XMind-style tree. Tick the circle when you know the answer; answers open in the side panel.
 - **Spaced review.** Flashcards from what you have learned. Forgotten cards come back more often,
-  and skills you have not revisited for 21 days get a ⟳ badge.
+  and skills you have not revisited for 21 days get a gold dot.
 - **Ask Claude.** Any question opens a Claude chat with a ready prompt. On claude.ai the answer streams right into the card.
-- **Built-in editor.** Edit skills, questions and links, drag nodes, add branches, Shift+click to connect skills.
+- **Edit like in XMind.** No separate edit mode: Tab adds the next skill or subquestion, Enter adds a sibling,
+  F2 or just typing renames, Delete removes, Ctrl+Z undoes. Drag skills to move them and drag the ⊕ handle
+  onto another skill to link them. Right-click for a context menu, press `?` for all shortcuts.
 - **Projects.** Separate maps with their own progress: System Design, a new language, a specific job offer.
 - **Import and export.** Projects and progress as JSON. XMind mind maps convert into a draft project.
 - **Zero dependencies.** Vanilla JS and SVG. The build produces one self-contained HTML file.
 
 <table>
 <tr>
-<td width="60%"><img src="docs/images/skill.webp" alt="Skill panel with prerequisites and self-check questions"></td>
+<td width="60%"><img src="docs/images/skill.webp" alt="Mind map inside a skill: questions grouped into subtopics"></td>
 <td width="40%"><img src="docs/images/review.webp" alt="Review flashcards"></td>
 </tr>
-<tr><td align="center">Skill details: prerequisites, questions, notes</td><td align="center">Review mode</td></tr>
+<tr><td align="center">Inside a skill: questions as a mind map</td><td align="center">Review mode</td></tr>
 </table>
 
 ## Quick start
@@ -77,7 +81,7 @@ The repository is also a [Claude Code](https://claude.com/claude-code) plugin wi
 
 Then just ask: *"add a Kotlin branch after Java"*, *"make a System Design map"*,
 *"write short answers for the Kafka questions"*. Claude edits the JSON, runs the validator and rebuilds the site.
-Without the repository, Claude can produce a project JSON that you load through **Editor → Import**.
+Without the repository, Claude can produce a project JSON that you load through **⋯ → Import**.
 
 ## Your own maps
 
@@ -93,11 +97,15 @@ A skill looks like this:
 {
   "id": "go.goroutines",
   "title": "Goroutines and channels",
-  "icon": "🌀",
+  "abbr": "Chan",
   "description": "Goroutines, buffered and unbuffered channels, select.",
   "requires": ["go.structures", "go.errors"],
   "keystone": true,
-  "questions": ["How does select work?", { "q": "What happens when you send to a closed channel?", "a": "panic" }]
+  "questions": [
+    "How does select work?",
+    { "q": "What happens when you send to a closed channel?", "a": "panic" },
+    { "topic": "sync", "items": ["What is a WaitGroup?", "Mutex vs RWMutex?"] }
+  ]
 }
 ```
 
