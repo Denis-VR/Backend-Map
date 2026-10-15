@@ -1,73 +1,97 @@
 {
   "id": "testing",
-  "title": "Тестирование",
-  "color": "#e3b341",
-  "description": "Виды тестов, JUnit, Mockito и тестирование Spring-приложений.",
+  "title": "Testing",
+  "color": "#7fd492",
+  "level": 1,
+  "description": "",
   "nodes": [
     {
-      "id": "test.basics",
-      "title": "Виды тестирования",
-      "abbr": "QA",
-      "description": "Пирамида тестов: unit, интеграционные, e2e, нагрузочные.",
-      "keystone": true,
+      "id": "test.mockito",
+      "title": "Mockito",
+      "abbr": "Mock",
+      "level": 1,
+      "description": "Моки, стабы, спаи, верификация вызовов и ограничения Mockito.",
+      "requires": [
+        "test.junit"
+      ],
       "questions": [
-        "Какие есть виды тестирования?",
-        "Что такое пирамида тестирования?",
-        "Чем интеграционный тест отличается от unit-теста?"
+        {
+          "q": "Какие основные аннотации (Mock, Captor, Spy)?",
+          "level": 1,
+          "important": true
+        },
+        {
+          "q": "Какие виды заглушек в Mockito?",
+          "level": 1
+        },
+        {
+          "q": "Как применять @RunWIth?",
+          "level": 1
+        },
+        {
+          "q": "Что такое стаббинг и верификация вызовов?",
+          "level": 1
+        },
+        {
+          "q": "Какие ограничения в Mockito (статические и final классы)?",
+          "level": 1
+        },
+        {
+          "q": "Что такое PowerMock?",
+          "level": 1
+        }
       ]
     },
     {
       "id": "test.junit",
       "title": "JUnit",
       "abbr": "JU5",
+      "level": 1,
       "description": "JUnit 5: аннотации, жизненный цикл, параметризованные тесты.",
       "requires": [
         "test.basics",
         "java.oop"
       ],
       "questions": [
-        "Какие различия между версиями JUnit4 и JUnit5?",
-        "Какие основные аннотации в JUnit?",
+        {
+          "q": "Какие различия между версиями JUnit4 и JUnit5?",
+          "level": 1
+        },
+        {
+          "q": "Какие основные аннотации в JUnit?",
+          "level": 1
+        },
         {
           "topic": "best-practive",
           "items": [
-            "Как измеряется покрытие кода тестами?",
-            "Что за принцип \"минимизация внешних зависимостей\"?",
-            "Что такое параметризация тестов?"
+            {
+              "q": "Как измеряется покрытие кода тестами?",
+              "level": 1
+            },
+            {
+              "q": "Что за принцип \"минимизация внешних зависимостей\"?",
+              "level": 1
+            },
+            {
+              "q": "Что такое параметризация тестов?",
+              "level": 1
+            }
           ]
         }
       ]
     },
     {
-      "id": "test.mockito",
-      "title": "Mockito",
-      "abbr": "Mock",
-      "description": "Моки, стабы, спаи, верификация вызовов и ограничения Mockito.",
-      "requires": [
-        "test.junit"
-      ],
+      "id": "test.basics",
+      "title": "Core",
+      "abbr": "QA",
+      "level": 1,
+      "description": "Пирамида тестов: unit, интеграционные, e2e, нагрузочные.",
       "questions": [
-        "Какие основные аннотации (Mock, Captor, Spy)?",
-        "Какие виды заглушек в Mockito?",
-        "Как применять @RunWIth?",
-        "Что такое стаббинг и верификация вызовов?",
-        "Какие ограничения в Mockito (статические и final классы)?",
-        "Что такое PowerMock?"
-      ]
-    },
-    {
-      "id": "test.spring",
-      "title": "Spring Boot Test",
-      "abbr": "Boot",
-      "description": "@SpringBootTest, слайсы, тестовая БД и Testcontainers.",
-      "requires": [
-        "test.mockito",
-        "spring.core"
-      ],
-      "questions": [
-        "Какие аннотации и как их применять?",
-        "Какие стратегии взаимодействия Spring test с тестовой БД?",
-        "Что такое Testcontainers и зачем они нужны?"
+        {
+          "q": "Какие есть виды тестирования?",
+          "level": 1,
+          "important": true
+        }
       ]
     }
   ]

@@ -1,0 +1,313 @@
+{
+  "id": "java-advanced",
+  "title": "Java Advanced",
+  "color": "#7fd492",
+  "level": 1,
+  "description": "",
+  "nodes": [
+    {
+      "id": "java.concurrency",
+      "title": "Concurrency",
+      "abbr": "Thrd",
+      "level": 1,
+      "description": "Потоки, синхронизация, CAS, атомики, пулы, виртуальные потоки.",
+      "requires": [
+        "java.collections",
+        "java.exceptions"
+      ],
+      "questions": [
+        {
+          "topic": "Java Memroy Model (JMM)",
+          "items": [
+            {
+              "q": "Что такое JMM?",
+              "level": 1
+            },
+            {
+              "q": "Как применять volatile и когда его использовать?",
+              "level": 1
+            },
+            {
+              "q": "Что такое happens-before?",
+              "level": 1,
+              "important": true
+            }
+          ]
+        },
+        {
+          "topic": "Потокобезопасные коллекции",
+          "items": [
+            {
+              "q": "Как устроена BlockingQueue?",
+              "level": 1
+            },
+            {
+              "q": "Какие основные потокобезопасные классы и как их применять?",
+              "level": 1
+            }
+          ]
+        },
+        {
+          "topic": "Проблемы и их решения",
+          "items": [
+            {
+              "q": "Какие есть проблемы с многопоточностью?",
+              "level": 1
+            },
+            {
+              "q": "Что такое Race Condition?",
+              "level": 1,
+              "important": true
+            },
+            {
+              "q": "Что такое Dead Locks?",
+              "level": 1,
+              "important": true
+            },
+            {
+              "q": "Что такое livelock?",
+              "level": 1
+            }
+          ]
+        },
+        {
+          "topic": "Классы",
+          "items": [
+            {
+              "q": "Расскажите про ForkJoinPool.",
+              "level": 1,
+              "important": true
+            },
+            {
+              "q": "Как использовать ComparableFuture?",
+              "level": 1
+            },
+            {
+              "q": "Что за механизм Barrier?",
+              "level": 1
+            },
+            {
+              "q": "Что такое услованя переменная (Condition)?",
+              "level": 1
+            },
+            {
+              "q": "Что такое CountDownLatch?",
+              "level": 1
+            },
+            {
+              "q": "Что такое Future и чем отличается от ComparableFuture?",
+              "level": 1
+            },
+            {
+              "q": "Как использовать ExecutorService?",
+              "level": 1
+            },
+            {
+              "q": "Что такое ReentRantLock?",
+              "level": 1
+            },
+            {
+              "q": "Что такое семафоры?",
+              "level": 1
+            }
+          ]
+        },
+        {
+          "q": "Какая разница между многопоточностью на основе потоков и на основе процессов?",
+          "level": 1
+        },
+        {
+          "q": "Как устроены мьютексы?",
+          "level": 1
+        },
+        {
+          "q": "Что такое потоки-демоны?",
+          "level": 1
+        },
+        {
+          "q": "Что такое виртуальные потоки?",
+          "level": 1
+        },
+        {
+          "q": "Какие есть способы создания потоков?",
+          "level": 1,
+          "important": true
+        },
+        {
+          "q": "Что такое lock-free и wait-free?",
+          "level": 1
+        },
+        {
+          "q": "Что такое Thread Pool?",
+          "level": 1
+        },
+        {
+          "q": "Как устроен Механизм CAS?",
+          "level": 1
+        },
+        {
+          "q": "Какие бывают статусы у потоков?",
+          "level": 1
+        },
+        {
+          "q": "За счет чего атомарные классы обеспечивают атомарность (AtomicRefference)?",
+          "level": 1
+        }
+      ],
+      "resources": [
+        {
+          "title": "Java Concurrency in Practice",
+          "url": "https://jcip.net/"
+        }
+      ]
+    },
+    {
+      "id": "java.streams",
+      "title": "Stream API",
+      "abbr": "Strm",
+      "level": 1,
+      "description": "Промежуточные и терминальные операции, reduce, flatMap, параллельные стримы.",
+      "requires": [
+        "java.generics"
+      ],
+      "questions": [
+        {
+          "q": "Что такое промежуточные операторы? Назовите их.",
+          "level": 1,
+          "important": true
+        },
+        {
+          "q": "Что такое терминальные операторы? Назовите их.",
+          "level": 1,
+          "important": true
+        },
+        {
+          "q": "Когда следует использовать параллельные стримы и как они работают?",
+          "level": 1
+        },
+        {
+          "q": "Какие есть способы оптимизации стримов?",
+          "level": 1
+        },
+        {
+          "q": "Как компилируются стримы и как улучшают производительность?",
+          "level": 1
+        },
+        {
+          "q": "Раскажите про метод reduce.",
+          "level": 1
+        },
+        {
+          "q": "Как использовать метод sorted (Camporator)?",
+          "level": 1
+        },
+        {
+          "q": "Как работает метод flatMap?",
+          "level": 1
+        },
+        {
+          "q": "Какие отличия Supplier'а от Consumer'а?",
+          "level": 1
+        }
+      ]
+    },
+    {
+      "id": "java.generics",
+      "title": "Дженерики",
+      "abbr": "<T>",
+      "level": 1,
+      "description": "Wildcards, PECS (extends/super), стирание типов.",
+      "requires": [
+        "java.collections"
+      ],
+      "questions": [
+        {
+          "q": "Что такое Wildсard?",
+          "level": 1
+        },
+        {
+          "q": "Зачем нужны слова Extends and super?",
+          "level": 1
+        },
+        {
+          "q": "Как дженерики компилируются JVM?",
+          "level": 2
+        },
+        {
+          "q": "Что такое стирание типов?",
+          "level": 2
+        }
+      ]
+    },
+    {
+      "id": "java.jvm",
+      "title": "JVM",
+      "abbr": "JVM",
+      "level": 1,
+      "description": "Память JVM, сборщики мусора, classloaders, JIT.",
+      "requires": [
+        "java.concurrency"
+      ],
+      "questions": [
+        {
+          "topic": "Garbage Collector",
+          "items": [
+            {
+              "q": "Какие поколения в сборщике мусора?",
+              "level": 1
+            },
+            {
+              "q": "Какие разновидности garbage collector?",
+              "level": 2
+            },
+            {
+              "q": "Какие есть стратегии сборки мусора?",
+              "level": 2
+            },
+            {
+              "q": "Как задать параметры конфигурации?",
+              "level": 2
+            }
+          ]
+        },
+        {
+          "q": "Как устроена память в jvm?",
+          "level": 1,
+          "important": true
+        },
+        {
+          "q": "Что включено JDK и зачем он нужен?",
+          "level": 1
+        },
+        {
+          "q": "Какие способы оптимизаций JVM?",
+          "level": 2
+        },
+        {
+          "q": "Какие есть виды JVM и чем отличаются?",
+          "level": 2
+        },
+        {
+          "q": "Какая роль у Classloader?",
+          "level": 2
+        },
+        {
+          "q": "Какие есть типы загрузчиков файлов?",
+          "level": 2
+        },
+        {
+          "q": "Что такое Frames?",
+          "level": 3
+        },
+        {
+          "q": "Назовите функции JIT Compiler?",
+          "level": 3
+        },
+        {
+          "q": "Что такое Execution Engine?",
+          "level": 3
+        }
+      ]
+    }
+  ]
+}

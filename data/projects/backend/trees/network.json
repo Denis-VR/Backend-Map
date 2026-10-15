@@ -1,132 +1,186 @@
 {
   "id": "network",
-  "title": "Сети и протоколы",
-  "color": "#986ee2",
-  "description": "Как сервисы разговаривают друг с другом.",
+  "title": "Network",
+  "color": "#f2cf3a",
+  "level": 2,
+  "description": "",
   "nodes": [
     {
-      "id": "net.http",
-      "title": "HTTP",
-      "abbr": "HTTP",
-      "description": "Методы, статусы, заголовки, HTTPS, путь запроса до контроллера.",
-      "keystone": true,
-      "questions": [
-        "Как в Spring Boot принимаются HTTP запросу на всех уровнях?",
-        "Виды HTTP методов?",
-        "Как устроены сервлеты и какой у них жизненный цикл?",
-        "Какая роль у Dispatcher Servlet?",
-        "Что такое http?",
-        "Чем отличается http от https?",
-        "TCP and UDP?",
-        "Что такое RESTAPI, принципы и реализации?",
-        "Как рабоает маршрутизатор и как он работает. его принцип?",
-        "Чем отличается mac от ip",
-        "сети osi"
-      ],
-      "resources": [
-        {
-          "title": "MDN: HTTP",
-          "url": "https://developer.mozilla.org/ru/docs/Web/HTTP"
-        }
-      ]
-    },
-    {
-      "id": "net.osi",
-      "title": "OSI, TCP/IP, TLS",
-      "abbr": "TCP",
-      "description": "Уровни модели OSI, TCP и UDP, TLS-рукопожатие.",
-      "requires": [
-        "net.http"
-      ],
-      "questions": [
-        "Виды уровней OSI?",
-        "TLS и TCP что это?",
-        "Какая работа у OSI уровней во время приема и отправки HTTP запросов?"
-      ]
-    },
-    {
-      "id": "net.rest",
-      "title": "REST API",
-      "abbr": "REST",
-      "description": "Ресурсы, идемпотентность, версионирование, коды ответов.",
-      "requires": [
-        "net.http"
-      ],
-      "questions": [
-        "Какие принципы REST?",
-        "Какие HTTP-методы идемпотентны?",
-        "Как версионировать API?",
-        "Чем PUT отличается от PATCH?",
-        "Как сделать пагинацию в API?"
-      ]
-    },
-    {
-      "id": "net.tomcat",
-      "title": "Tomcat и сервлеты",
-      "abbr": "Srvl",
-      "description": "Контейнер сервлетов, Jetty, Undertow, настройка в Spring Boot.",
-      "requires": [
-        "net.http",
-        "java.core"
-      ],
-      "questions": [
-        "Какие аналоги tomcat? (WildFly, Jetty)",
-        "Зачем нужен tomcat и как используется?",
-        "Как настроить Tomcat с помщью Spring Boot?"
-      ]
-    },
-    {
-      "id": "net.websockets",
-      "title": "WebSockets",
-      "abbr": "WS",
-      "description": "Двусторонняя связь, когда её применять.",
-      "requires": [
-        "net.osi"
-      ],
-      "questions": [
-        "Как устроены websocket?",
-        "Где и в каких случаях применять websocket?"
-      ]
-    },
-    {
       "id": "net.grpc",
-      "title": "gRPC",
+      "title": "GRPs",
       "abbr": "gRPC",
+      "level": 2,
       "description": "Protobuf, HTTP/2, стриминг, общение микросервисов.",
-      "requires": [
-        "net.rest"
-      ],
       "questions": [
-        "Преимущества, недостатки и отличия GRPs от HTTP?",
-        "Ситуации применения GRPs?",
-        "Как микросервисы могут общаться с помощью GRPs и зачем? Как еще они могут общаться?"
+        {
+          "q": "Преимущества, недостатки и отличия GRPs от HTTP?",
+          "level": 2,
+          "important": true
+        },
+        {
+          "q": "Ситуации применения GRPs?",
+          "level": 2
+        },
+        {
+          "q": "Как микросервисы могут общаться с помощью GRPs и зачем? Как еще они могут общаться?",
+          "level": 2
+        }
       ]
     },
     {
       "id": "net.graphql",
       "title": "GraphQL",
       "abbr": "GQL",
+      "level": 2,
       "description": "Схема, запросы, резолверы, где применять.",
-      "requires": [
-        "net.rest"
-      ],
       "questions": [
-        "Что такое GraphQL и как он устроен?",
-        "Где применять GraphQL?"
+        {
+          "q": "Что такое GraphQL и как он устроен?",
+          "level": 2
+        },
+        {
+          "q": "Где применять GraphQL?",
+          "level": 2
+        }
       ]
     },
     {
       "id": "net.soap",
       "title": "SOAP",
       "abbr": "SOAP",
+      "level": 2,
       "description": "WSDL, плюсы и минусы, когда ещё встречается.",
+      "questions": [
+        {
+          "q": "Преимущества и недостатки SOAP?",
+          "level": 2
+        },
+        {
+          "q": "Ситуации применения SOAP?",
+          "level": 2
+        },
+        {
+          "q": "Как использовал SOAP на проекте?",
+          "level": 2
+        }
+      ]
+    },
+    {
+      "id": "network.reactive",
+      "title": "Reactive",
+      "abbr": "Rea",
+      "level": 2,
+      "description": "",
+      "questions": [
+        {
+          "q": "WebFlux что это?",
+          "level": 2
+        },
+        {
+          "q": "R2DBC что это?",
+          "level": 2
+        }
+      ]
+    },
+    {
+      "id": "net.websockets",
+      "title": "Web-Sockets",
+      "abbr": "WS",
+      "level": 2,
+      "description": "Двусторонняя связь, когда её применять.",
       "requires": [
-        "net.rest"
+        "net.osi"
       ],
       "questions": [
-        "Преимущества и недостатки SOAP?",
-        "Ситуации применения SOAP?",
-        "Как использовал SOAP на проекте?"
+        {
+          "q": "Как устроены websocket?",
+          "level": 2
+        },
+        {
+          "q": "Где и в каких случаях применять websocket?",
+          "level": 2
+        }
+      ]
+    },
+    {
+      "id": "net.osi",
+      "title": "OSI LAYERS",
+      "abbr": "TCP",
+      "level": 2,
+      "description": "Уровни модели OSI, TCP и UDP, TLS-рукопожатие.",
+      "requires": [
+        "net.http"
+      ],
+      "questions": [
+        {
+          "q": "Виды уровней OSI?",
+          "level": 2
+        },
+        {
+          "q": "TLS и TCP что это?",
+          "level": 2
+        },
+        {
+          "q": "Какая работа у OSI уровней во время приема и отправки HTTP запросов?",
+          "level": 2
+        }
+      ]
+    },
+    {
+      "id": "net.tomcat",
+      "title": "Tomcat",
+      "abbr": "Srvl",
+      "level": 2,
+      "description": "Контейнер сервлетов, Jetty, Undertow, настройка в Spring Boot.",
+      "requires": [
+        "net.http",
+        "java.core"
+      ],
+      "questions": [
+        {
+          "q": "Какие аналоги tomcat? (WildFly, Jetty)",
+          "level": 1
+        },
+        {
+          "q": "Зачем нужен tomcat и как используется?",
+          "level": 1
+        },
+        {
+          "q": "Как настроить Tomcat с помщью Spring Boot?",
+          "level": 1
+        }
+      ]
+    },
+    {
+      "id": "net.http",
+      "title": "HTTP",
+      "abbr": "HTTP",
+      "level": 2,
+      "description": "Методы, статусы, заголовки, HTTPS, путь запроса до контроллера.",
+      "questions": [
+        {
+          "q": "Как в Spring Boot принимаются HTTP запросу на всех уровнях?",
+          "level": 1,
+          "important": true
+        },
+        {
+          "q": "Виды HTTP методов?",
+          "level": 1
+        },
+        {
+          "q": "Как устроены сервлеты и какой у них жизненный цикл?",
+          "level": 1
+        },
+        {
+          "q": "Какая роль у Dispatcher Servlet?",
+          "level": 1
+        }
+      ],
+      "resources": [
+        {
+          "title": "MDN: HTTP",
+          "url": "https://developer.mozilla.org/ru/docs/Web/HTTP"
+        }
       ]
     }
   ]

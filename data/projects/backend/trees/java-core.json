@@ -1,0 +1,268 @@
+{
+  "id": "java-core",
+  "title": "Java Core",
+  "color": "#7fd492",
+  "level": 1,
+  "description": "",
+  "nodes": [
+    {
+      "id": "java.collections",
+      "title": "Collections",
+      "abbr": "Coll",
+      "level": 1,
+      "description": "List, Set, Map, Deque. Как устроены HashMap и TreeMap, сложность операций.",
+      "requires": [
+        "java.classes"
+      ],
+      "questions": [
+        {
+          "q": "Какие основные интерфейсы в collections?",
+          "level": 1
+        },
+        {
+          "q": "Как устроен TreeSet?",
+          "level": 1
+        },
+        {
+          "q": "Как устроен HashMap?",
+          "level": 1,
+          "important": true
+        },
+        {
+          "q": "Как устроено красно-черное дерево?",
+          "level": 1
+        },
+        {
+          "q": "Какие есть способы копирования массива?",
+          "level": 1
+        },
+        {
+          "q": "Какая эффективность вставки в середину для ArrayList и LinkedList?",
+          "level": 1
+        },
+        {
+          "q": "Какие отличия Set и List?",
+          "level": 1
+        },
+        {
+          "q": "Какие алгоритмические сложности операций разных коллекций?",
+          "level": 1,
+          "important": true
+        },
+        {
+          "q": "Как избегать коллизий?",
+          "level": 1
+        },
+        {
+          "q": "При какой ситуации в коллекции HashMap может потеряться элемент?",
+          "level": 1
+        },
+        {
+          "q": "Что такое Deque?",
+          "level": 1
+        }
+      ],
+      "resources": [
+        {
+          "title": "JDK Collections Framework",
+          "url": "https://docs.oracle.com/en/java/javase/21/core/java-collections-framework.html"
+        }
+      ]
+    },
+    {
+      "id": "java.exceptions",
+      "title": "Exceptions",
+      "abbr": "Exc",
+      "level": 1,
+      "description": "Иерархия Throwable, checked и unchecked, try-with-resources.",
+      "requires": [
+        "java.core"
+      ],
+      "questions": [
+        {
+          "q": "Какая иерархия исключений?",
+          "level": 1
+        },
+        {
+          "q": "Что такое checked и unchekcked исключения?",
+          "level": 1,
+          "important": true
+        }
+      ]
+    },
+    {
+      "id": "java.oop",
+      "title": "ООП",
+      "abbr": "OOP",
+      "level": 1,
+      "description": "Инкапсуляция, наследование, полиморфизм, композиция и агрегация, связность.",
+      "requires": [
+        "java.core"
+      ],
+      "questions": [
+        {
+          "q": "Какие преимущества у ООП?",
+          "level": 1
+        },
+        {
+          "q": "Что такое композицияя, агрегация и ассоциация?",
+          "level": 1
+        },
+        {
+          "q": "Какие различия между интерфейсами и абстрактными классами?",
+          "level": 1,
+          "important": true
+        },
+        {
+          "q": "Расскажите про Наследование, Полиморфизм и Инкапсуляцию",
+          "level": 1
+        },
+        {
+          "q": "Что такое сoupling и cohesion?",
+          "level": 1
+        },
+        {
+          "q": "Что такое раннее и позднее связывание?",
+          "level": 1,
+          "important": true
+        }
+      ]
+    },
+    {
+      "id": "java.classes",
+      "title": "Классы и методы",
+      "abbr": "Obj",
+      "level": 1,
+      "description": "Методы Object, обёртки, Optional, immutable-объекты, потоки ввода-вывода.",
+      "requires": [
+        "java.oop"
+      ],
+      "questions": [
+        {
+          "q": "Назовите методы Object и зачем они нужны?",
+          "level": 1
+        },
+        {
+          "q": "Зачем нужен StirngBuilder и StringBuffer?",
+          "level": 1
+        },
+        {
+          "q": "Какая функция у методов wait, notify, notifyAll?",
+          "level": 1
+        },
+        {
+          "q": "Что такое классы-ресурсы и зачем нужен интерфейс Closable?",
+          "level": 1
+        },
+        {
+          "q": "Зачем нужен класс Optional?",
+          "level": 1
+        },
+        {
+          "q": "Что такое Immutable Objects?",
+          "level": 1
+        },
+        {
+          "q": "Чем отличаются InputStream, OutputStream, Reader, Writer?",
+          "level": 1
+        },
+        {
+          "q": "Что такое классы-врапперы?",
+          "level": 1
+        }
+      ]
+    },
+    {
+      "id": "java.serialization",
+      "title": "Сериализация",
+      "abbr": "Ser",
+      "level": 1,
+      "description": "Serializable, Externalizable, маршалинг и его условия.",
+      "requires": [
+        "java.classes"
+      ],
+      "questions": [
+        {
+          "q": "Расскажите про сериализацию и десериализацию.",
+          "level": 1
+        },
+        {
+          "q": "Что такое маршалиг?",
+          "level": 1
+        },
+        {
+          "q": "Назовите условия сериализации объектов.",
+          "level": 1
+        }
+      ]
+    },
+    {
+      "id": "java.core",
+      "title": "Core",
+      "abbr": "Core",
+      "level": 1,
+      "description": "Синтаксис, типы, equals/hashCode, String pool, static, модификаторы доступа.",
+      "questions": [
+        {
+          "q": "Как переопределить Equals и Hashcode?",
+          "level": 1,
+          "important": true
+        },
+        {
+          "q": "Какие есть модификаторы доступа?",
+          "level": 1
+        },
+        {
+          "q": "Какие различия между абстрактным классом и интерфейсом?",
+          "level": 1
+        },
+        {
+          "q": "Какая разница между примитивом и ссылочным типом данных?",
+          "level": 1
+        },
+        {
+          "q": "Что такое функциональный интерфейс?",
+          "level": 1
+        },
+        {
+          "q": "Как работают статичные методы и поля?",
+          "level": 1
+        },
+        {
+          "q": "Зачем нужна статическая инициализация?",
+          "level": 1
+        },
+        {
+          "q": "Что такое сигнатура методов?",
+          "level": 1
+        },
+        {
+          "q": "Как устроен string pool?",
+          "level": 1
+        },
+        {
+          "q": "Что такое итератор и зачем он нужен?",
+          "level": 1
+        },
+        {
+          "q": "Как создать свою аннотацию?",
+          "level": 1
+        },
+        {
+          "q": "В чем проблема конкатенации?",
+          "level": 1
+        },
+        {
+          "q": "Что такое Reflection API?",
+          "level": 1
+        }
+      ],
+      "resources": [
+        {
+          "title": "Dev.java — Learn",
+          "url": "https://dev.java/learn/"
+        }
+      ]
+    }
+  ]
+}

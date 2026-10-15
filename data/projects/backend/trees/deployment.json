@@ -1,0 +1,168 @@
+{
+  "id": "deployment",
+  "title": "Deployment",
+  "color": "#7fd492",
+  "level": 1,
+  "description": "",
+  "nodes": [
+    {
+      "id": "ops.k8s",
+      "title": "Kubernetes",
+      "abbr": "K8s",
+      "level": 2,
+      "description": "Поды, деплойменты, сервисы, ingress, оркестрация.",
+      "requires": [
+        "ops.docker"
+      ],
+      "questions": [
+        {
+          "q": "Как интегрировать Kubernetes с Spring Cloud?",
+          "level": 2
+        },
+        {
+          "q": "Что такое оркестрация в Kubernetes?",
+          "level": 2
+        },
+        {
+          "q": "Как настроить маршрутизацию в Kubernetes?",
+          "level": 2
+        },
+        {
+          "q": "Как работать с кластерами в Kubernetes?",
+          "level": 2
+        }
+      ]
+    },
+    {
+      "id": "ops.cicd",
+      "title": "CI/CD",
+      "abbr": "CI",
+      "level": 2,
+      "description": "Пайплайны сборки, тестов и деплоя.",
+      "requires": [
+        "ops.git",
+        "ops.docker"
+      ],
+      "questions": [
+        {
+          "q": "В чем суть концепции CI/CD?",
+          "level": 2,
+          "important": true
+        },
+        {
+          "q": "Каковы основные шаги процесса CI/CD?",
+          "level": 2
+        }
+      ]
+    },
+    {
+      "id": "ops.linux",
+      "title": "Linux",
+      "abbr": "Lnx",
+      "level": 1,
+      "description": "Командная строка, процессы, права, работа на сервере.",
+      "questions": [
+        {
+          "q": "Какие есть основные команды (grep, find) в Linux?",
+          "level": 1
+        },
+        {
+          "q": "Как работать на сервере: запускать jar, mvn, писать скрипты?",
+          "level": 1
+        },
+        {
+          "q": "Как найти отличия в текстовых файлах?",
+          "level": 1
+        }
+      ]
+    },
+    {
+      "id": "ops.docker",
+      "title": "Docker",
+      "abbr": "Dkr",
+      "level": 1,
+      "description": "Образы, контейнеры, docker-compose, многоэтапная сборка.",
+      "requires": [
+        "ops.linux"
+      ],
+      "questions": [
+        {
+          "q": "Чем виртуальная машина отличается от контейнера?",
+          "level": 1,
+          "important": true
+        },
+        {
+          "q": "В чем заключается концепция контейнеризации?",
+          "level": 1,
+          "important": true
+        },
+        {
+          "q": "Как устроен и зачем нужен docker-compose?",
+          "level": 1
+        }
+      ]
+    },
+    {
+      "id": "ops.git",
+      "title": "Git",
+      "abbr": "Git",
+      "level": 1,
+      "description": "Ветки, rebase, cherry-pick, stash, разрешение конфликтов.",
+      "questions": [
+        {
+          "q": "Как применять rebase в Git?",
+          "level": 1
+        },
+        {
+          "q": "Для чего используется команда git stash?",
+          "level": 1
+        },
+        {
+          "q": "Какова цель использования cherry-pick в Git?",
+          "level": 1,
+          "important": true
+        }
+      ],
+      "resources": [
+        {
+          "title": "Pro Git",
+          "url": "https://git-scm.com/book/ru/v2"
+        }
+      ]
+    },
+    {
+      "id": "java.maven",
+      "title": "Maven",
+      "abbr": "Mvn",
+      "level": 1,
+      "description": "Фазы сборки, репозитории, свои стартеры, деплой в Nexus, проверка codestyle.",
+      "requires": [
+        "java.core"
+      ],
+      "questions": [
+        {
+          "q": "Как собрать свой собственный starter с помощью Maven?",
+          "level": 1,
+          "important": true
+        },
+        {
+          "q": "Как деплоить артефакты в Nexus через Maven?",
+          "level": 1,
+          "important": true
+        },
+        {
+          "q": "Как настроить автоматическую проверку codestyle в Maven?",
+          "level": 1
+        },
+        {
+          "q": "Какие фазы существуют в Maven?",
+          "level": 1
+        },
+        {
+          "q": "Какие бывают репозитории в Maven?",
+          "level": 1
+        }
+      ]
+    }
+  ]
+}

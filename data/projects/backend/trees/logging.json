@@ -1,0 +1,215 @@
+{
+  "id": "logging",
+  "title": "Logging",
+  "color": "#ff7a1a",
+  "level": 3,
+  "description": "",
+  "nodes": [
+    {
+      "id": "obs.logging",
+      "title": "Logstash",
+      "abbr": "Log",
+      "level": 3,
+      "description": "Logstash, Elasticsearch, Kibana, структурные логи.",
+      "requires": [
+        "ops.docker"
+      ],
+      "questions": [
+        {
+          "q": "Назначение Logstash",
+          "level": 2
+        },
+        {
+          "q": "Основные элементы в pipeline",
+          "level": 3
+        },
+        {
+          "q": "Типы конфигурационных файлов",
+          "level": 3
+        },
+        {
+          "q": "Grok-фильтр",
+          "level": 3
+        },
+        {
+          "q": "Как добавить временную метку к сообщениям логов?",
+          "level": 3
+        },
+        {
+          "q": "Устройство Ingest pipeline",
+          "level": 3
+        },
+        {
+          "q": "Как Logstash взаимодействует с Elasticsearch?",
+          "level": 3
+        },
+        {
+          "q": "Как реализовать обработку неструктурированных данных?",
+          "level": 3
+        },
+        {
+          "q": "Способы масштабирования",
+          "level": 3
+        }
+      ]
+    },
+    {
+      "id": "logging.kibana",
+      "title": "Kibana",
+      "abbr": "Kib",
+      "level": 3,
+      "description": "",
+      "questions": [
+        {
+          "q": "Назначение Kibana",
+          "level": 2
+        },
+        {
+          "q": "Как Kibana помогает в анализе логов и мониторинге?",
+          "level": 2
+        },
+        {
+          "q": "Kibana dashboard",
+          "level": 2
+        },
+        {
+          "q": "Типы визуализаций",
+          "level": 3
+        },
+        {
+          "q": "Как настроить APM (Application Performance Monitoring) в Kibana?",
+          "level": 3
+        },
+        {
+          "q": "Назначение Vega",
+          "level": 3
+        },
+        {
+          "q": "Настройка и управление индексами",
+          "level": 3
+        }
+      ]
+    },
+    {
+      "id": "obs.grafana",
+      "title": "Grafana",
+      "abbr": "Graf",
+      "level": 3,
+      "description": "Дашборды и алерты.",
+      "requires": [
+        "obs.metrics"
+      ],
+      "questions": [
+        {
+          "q": "Назначение и возможности Grafana",
+          "level": 2
+        },
+        {
+          "q": "Как работает система оповещений (alerting) в Grafana?",
+          "level": 2
+        },
+        {
+          "q": "Как Grafana интегрируется с внешними источниками данных?",
+          "level": 3
+        },
+        {
+          "q": "Что такое плагины Grafana и как они расширяют функциональность?",
+          "level": 3
+        },
+        {
+          "q": "Как реализовать шаблоны (templating) для динамических дашбордов?",
+          "level": 3
+        },
+        {
+          "q": "Масштабирование Grafana",
+          "level": 3
+        }
+      ]
+    },
+    {
+      "id": "obs.metrics",
+      "title": "Prometheus",
+      "abbr": "Prom",
+      "level": 3,
+      "description": "Prometheus, Micrometer, RED и USE.",
+      "requires": [
+        "ops.docker"
+      ],
+      "questions": [
+        {
+          "q": "Что такое Prometheus и как он работает?",
+          "level": 2
+        },
+        {
+          "q": "Как писать запросы на PromQL?",
+          "level": 2
+        },
+        {
+          "q": "В чем отличие push- и pull-моделей мониторинга?",
+          "level": 2
+        },
+        {
+          "q": "Что такое экспортеры (exporters) в Prometheus?",
+          "level": 3
+        },
+        {
+          "q": "Как устроена архитектура Prometheus?",
+          "level": 3
+        },
+        {
+          "q": "Как настроить правила алертинга и интеграцию с Alertmanager?",
+          "level": 3
+        },
+        {
+          "q": "Как происходит интеграция Prometheus с Grafana?",
+          "level": 3
+        },
+        {
+          "q": "Как реализовать сервис-дискавери (service discovery) в Prometheus?",
+          "level": 3
+        },
+        {
+          "q": "Как управлять retention и хранением данных?",
+          "level": 3
+        },
+        {
+          "q": "Как мониторить Kubernetes с помощью Prometheus?",
+          "level": 3
+        },
+        {
+          "q": "Как использовать метки (labels) для организации метрик?",
+          "level": 3
+        }
+      ]
+    },
+    {
+      "id": "logging.micrometer",
+      "title": "Micrometer",
+      "abbr": "Mic",
+      "level": 3,
+      "description": "",
+      "questions": [
+        {
+          "q": "Суть",
+          "level": 2
+        },
+        {
+          "q": "Применимость",
+          "level": 2
+        },
+        {
+          "q": "Типы метрик",
+          "level": 3
+        },
+        {
+          "q": "Как связан с Spring Actuator",
+          "level": 3
+        },
+        {
+          "q": "Зачем нужен MeterRegistry?",
+          "level": 3
+        }
+      ]
+    }
+  ]
+}

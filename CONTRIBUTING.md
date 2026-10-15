@@ -24,12 +24,14 @@ Open `dist/index.html` in a browser to test. Code lives in `src/` (vanilla JS, S
 
 The data format and design rules are in [`skills/gametree-trees/SKILL.md`](skills/gametree-trees/SKILL.md). The short version:
 
-- A skill is a topic worth 1–10 hours of study. Small facts go into `questions`; group long lists into `{ "topic", "items" }`.
-- Give each skill a short `abbr` label (2–4 characters). No emoji.
-- Keep 1–3 `requires` per skill and link new branches to existing ones.
-- **Never rename existing skill ids or reword existing questions**: user progress is keyed by them.
+- A topic sits on the line, sections branch off it, questions branch off sections.
+  A section is worth 1–10 hours of study. Small facts go into `questions`; group long lists into `{ "topic", "items" }`.
+- Set `level` (1–4) for difficulty and `important: true` for questions that need extra attention.
+- Give each section a short `abbr` label (2–4 characters). No emoji.
+- Keep 1–3 `requires` per section and link new topics to existing ones.
+- **Never rename existing section ids or reword existing questions**: user progress is keyed by them.
   If a question is wrong, add a fixed one and remove the old one in the same PR, and say so in the description.
-- Do not add `pos` coordinates by hand; the layout is automatic.
+- There are no coordinates in the data; the layout is automatic.
 
 You can also let Claude do the editing: the repo is a Claude Code plugin (see the README).
 

@@ -1,34 +1,101 @@
 {
   "id": "spring",
   "title": "Spring",
-  "color": "#57ab5a",
-  "description": "Экосистема Spring: от IoC-контейнера до облачных микросервисов.",
+  "color": "#7fd492",
+  "level": 1,
+  "description": "",
   "nodes": [
+    {
+      "id": "test.spring",
+      "title": "Spring Boot Test",
+      "abbr": "Boot",
+      "level": 1,
+      "description": "@SpringBootTest, слайсы, тестовая БД и Testcontainers.",
+      "requires": [
+        "test.mockito",
+        "spring.core"
+      ],
+      "questions": [
+        {
+          "q": "Какие аннотации и как их применять?",
+          "level": 1
+        },
+        {
+          "q": "Какие стратегии взаимодействия Spring test с тестовой БД?",
+          "level": 1
+        }
+      ]
+    },
     {
       "id": "spring.core",
       "title": "Spring Core",
       "abbr": "IoC",
+      "level": 1,
       "description": "IoC и DI, бины, скоупы, жизненный цикл, прокси, циклические зависимости.",
       "requires": [
         "java.oop",
         "java.exceptions"
       ],
-      "keystone": true,
       "questions": [
-        "С какими версиями Spring работал и чем они отличаются?",
-        "Что такое Bean в Spring?",
-        "Какой жизненный цикл у Beans?",
-        "В чем разница между BeanDefinition, BeanPostProcessor, postConstruct и PreDestroy?",
-        "Как используется Prototype в Spring?",
-        "Какие бывают scope в Spring?",
-        "В чем суть DI и IOC?",
-        "Какие бывают виды внедрения зависимостей в Spring?",
-        "Можно ли создать свой собственный scope в Spring?",
-        "Как внедрить Prototype Bean в Singleton Bean?",
-        "Как решать проблему циклических зависимостей?",
-        "Для чего нужны Bean, Component, Service и Repository?",
-        "В чем разница между @Primary и @Qualifier и зачем они нужны?",
-        "Какие бывают виды прокси?"
+        {
+          "q": "С какими версиями Spring работал и чем они отличаются?",
+          "level": 1
+        },
+        {
+          "q": "Что такое Bean в Spring?",
+          "level": 1
+        },
+        {
+          "q": "Какой жизненный цикл у Beans?",
+          "level": 1
+        },
+        {
+          "q": "В чем разница между BeanDefinition, BeanPostProcessor, postConstruct и PreDestroy?",
+          "level": 1
+        },
+        {
+          "q": "Как используется Prototype в Spring?",
+          "level": 1
+        },
+        {
+          "q": "Какие бывают scope в Spring?",
+          "level": 1,
+          "important": true
+        },
+        {
+          "q": "В чем суть DI и IOC?",
+          "level": 1,
+          "important": true
+        },
+        {
+          "q": "Какие бывают виды внедрения зависимостей в Spring?",
+          "level": 1
+        },
+        {
+          "q": "Можно ли создать свой собственный scope в Spring?",
+          "level": 1
+        },
+        {
+          "q": "Как внедрить Prototype Bean в Singleton Bean?",
+          "level": 1
+        },
+        {
+          "q": "Как решать проблему циклических зависимостей?",
+          "level": 1,
+          "important": true
+        },
+        {
+          "q": "Для чего нужны Bean, Component, Service и Repository?",
+          "level": 1
+        },
+        {
+          "q": "В чем разница между @Primary и @Qualifier и зачем они нужны?",
+          "level": 1
+        },
+        {
+          "q": "Какие бывают виды прокси?",
+          "level": 1
+        }
       ],
       "resources": [
         {
@@ -38,152 +105,167 @@
       ]
     },
     {
-      "id": "spring.aop",
-      "title": "Spring AOP",
-      "abbr": "AOP",
-      "description": "Аспекты, pointcut, advice и как они работают через прокси.",
-      "requires": [
-        "spring.core"
-      ],
-      "questions": [
-        "Как перехватывать исключения HTTP?",
-        "Какие бывают типы аспектов?",
-        "Как работает PointCut в Spring AOP?",
-        "За счет чего работает аспектно-ориентированное программирование?"
-      ]
-    },
-    {
-      "id": "spring.mvc",
-      "title": "Spring MVC",
-      "abbr": "MVC",
-      "description": "DispatcherServlet, контроллеры, фильтры и интерсепторы.",
-      "requires": [
-        "spring.core",
-        "net.http"
-      ],
-      "questions": [
-        "Как устроен и зачем нужен DispatcherServlet?",
-        "В чем разница между Filters, Interceptors и Listeners в Spring MVC?"
-      ]
-    },
-    {
       "id": "spring.data",
       "title": "Spring Data",
       "abbr": "Repo",
+      "level": 1,
       "description": "Репозитории, derived queries, JPQL и нативные запросы.",
       "requires": [
         "spring.core",
         "db.hibernate"
       ],
       "questions": [
-        "Как используется и для чего нужен Spring Data?",
-        "Какие бывают языки запросов в Spring Data?"
+        {
+          "q": "Как используется и для чего нужен Spring Data?",
+          "level": 1
+        },
+        {
+          "q": "Какие бывают языки запросов в Spring Data?",
+          "level": 1
+        }
       ]
     },
     {
-      "id": "spring.security",
-      "title": "Spring Security",
-      "abbr": "Sec",
-      "description": "Аутентификация и авторизация, JWT, OAuth2.",
+      "id": "spring.aop",
+      "title": "Spring AOP",
+      "abbr": "AOP",
+      "level": 1,
+      "description": "Аспекты, pointcut, advice и как они работают через прокси.",
       "requires": [
-        "spring.mvc"
+        "spring.core"
       ],
       "questions": [
-        "В чем отличаются аутентификация и авторизация?",
-        "Как настроить JWT в Spring Security?",
-        "Что такое OAuth и как его использовать в Spring?"
+        {
+          "q": "Как перехватывать исключения HTTP?",
+          "level": 1
+        },
+        {
+          "q": "Какие бывают типы аспектов?",
+          "level": 1
+        },
+        {
+          "q": "Как работает PointCut в Spring AOP?",
+          "level": 1
+        },
+        {
+          "q": "За счет чего работает аспектно-ориентированное программирование?",
+          "level": 1
+        }
+      ]
+    },
+    {
+      "id": "spring.mvc",
+      "title": "Spring MVC",
+      "abbr": "MVC",
+      "level": 1,
+      "description": "DispatcherServlet, контроллеры, фильтры и интерсепторы.",
+      "requires": [
+        "spring.core",
+        "net.http"
+      ],
+      "questions": [
+        {
+          "q": "Как устроен и зачем нужен DispatcherServlet?",
+          "level": 1,
+          "important": true
+        },
+        {
+          "q": "В чем разница между Filters, Interceptors и Listeners в Spring MVC?",
+          "level": 2
+        }
       ]
     },
     {
       "id": "spring.actuator",
       "title": "Spring Actuator",
       "abbr": "Act",
+      "level": 1,
       "description": "Health, metrics и служебные эндпоинты приложения.",
       "requires": [
         "spring.mvc"
       ],
       "questions": [
-        "Зачем нужен Spring Actuator?",
-        "Как посмотреть эндпойнты в Spring Actuator?"
+        {
+          "q": "Зачем нужен Spring Actuator?",
+          "level": 1
+        },
+        {
+          "q": "Как посмотреть эндпойнты в Spring Actuator?",
+          "level": 1
+        }
+      ]
+    },
+    {
+      "id": "spring.security",
+      "title": "Spring Security",
+      "abbr": "Sec",
+      "level": 2,
+      "description": "Аутентификация и авторизация, JWT, OAuth2.",
+      "requires": [
+        "spring.mvc"
+      ],
+      "questions": [
+        {
+          "q": "В чем отличаются аутентификация и авторизация?",
+          "level": 1
+        },
+        {
+          "q": "Как настроить JWT в Spring Security?",
+          "level": 2
+        },
+        {
+          "q": "Что такое OAuth и как его использовать в Spring?",
+          "level": 2
+        }
       ]
     },
     {
       "id": "spring.webflux",
-      "title": "WebFlux и Reactive",
+      "title": "Spring WebFlux $ Reactive Spring Data",
       "abbr": "Flux",
+      "level": 3,
       "description": "Reactor, неблокирующий веб-стек, R2DBC.",
       "requires": [
         "spring.mvc",
         "java.concurrency"
       ],
       "questions": [
-        "Для чего нужен Reactor и как его использовать?",
-        "Что такое корутины и когда их следует применять?",
-        "WebFlux что это?",
-        "R2DBC что это?"
+        {
+          "q": "Для чего нужен Reactor и как его использовать?",
+          "level": 3
+        },
+        {
+          "q": "Что такое корутины и когда их следует применять?",
+          "level": 3
+        }
       ]
     },
     {
       "id": "spring.ai",
       "title": "Spring AI",
       "abbr": "AI",
+      "level": 1,
       "description": "Абстракции для LLM, стриминг, Vector Store.",
       "requires": [
         "spring.mvc"
       ],
       "questions": [
-        "Какие абстракции предоставляет Spring AI?",
-        "Как подключить внешние AI-сервисы в Spring AI?",
-        "Как реализована поддержка синхронных и стриминговых API в Spring AI?",
-        "Для чего используется Vector Store API и как реализовать фильтрацию по метаданным?"
-      ]
-    },
-    {
-      "id": "spring.cloud",
-      "title": "Spring Cloud",
-      "abbr": "Cloud",
-      "description": "Spring для микросервисов: интеграция с ELK, трассировка, облачные стартеры.",
-      "requires": [
-        "spring.mvc",
-        "arch.microservices"
-      ],
-      "keystone": true,
-      "questions": [
-        "Какие есть компоненты Spring Cloud и как они связаны?",
-        "Как интегрировать ELK и Spring Sleuth?"
-      ]
-    },
-    {
-      "id": "spring.config",
-      "title": "Spring Cloud Config",
-      "abbr": "Cfg",
-      "description": "Централизованная конфигурация сервисов.",
-      "requires": [
-        "spring.cloud"
-      ],
-      "questions": [
-        "Какие есть репозитории?",
-        "Как настроить файловую систему?",
-        "Как динамически обновлять сервисы и какие проблемы?",
-        "Как устроен?",
-        "Как интегрировать с Vault?",
-        "Как интегрировать с Consul?"
-      ]
-    },
-    {
-      "id": "spring.stream",
-      "title": "Spring Cloud Stream",
-      "abbr": "Strm",
-      "description": "Событийные сервисы поверх Kafka и RabbitMQ.",
-      "requires": [
-        "spring.cloud",
-        "mq.kafka"
-      ],
-      "questions": [
-        "Событийно-ориентированная архитектура и ее недостатки",
-        "Как можно передавать события?",
-        "Как настроить?",
-        "Как интегрировать с Redis для распределенного кеширования?"
+        {
+          "q": "Какие абстракции предоставляет Spring AI?",
+          "level": 4
+        },
+        {
+          "q": "Как подключить внешние AI-сервисы в Spring AI?",
+          "level": 4
+        },
+        {
+          "q": "Как реализована поддержка синхронных и стриминговых API в Spring AI?",
+          "level": 4
+        },
+        {
+          "q": "Для чего используется Vector Store API и как реализовать фильтрацию по метаданным?",
+          "level": 4
+        }
       ]
     }
   ]
