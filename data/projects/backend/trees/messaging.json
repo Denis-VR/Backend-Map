@@ -1,0 +1,95 @@
+{
+  "id": "messaging",
+  "title": "Брокеры сообщений",
+  "color": "#e275ad",
+  "icon": "📨",
+  "description": "Асинхронное взаимодействие сервисов.",
+  "nodes": [
+    {
+      "id": "mq.basics",
+      "title": "Основы брокеров",
+      "icon": "📬",
+      "description": "Очереди и топики, гарантии доставки, продюсеры и консьюмеры.",
+      "requires": [
+        "net.http"
+      ],
+      "keystone": true,
+      "questions": [
+        "Чем Kafka отличается от RabbitMQ? Примеры на проектах",
+        "Консюмер, продюсер, патришион",
+        "Консюмер груп?",
+        "Что такое at-most-once, at-least-once и exactly-once?",
+        "Когда нужна асинхронная интеграция, а когда синхронная?"
+      ]
+    },
+    {
+      "id": "mq.kafka",
+      "title": "Kafka",
+      "icon": "🦅",
+      "description": "Партиции, offset, consumer groups, ISR, KRaft.",
+      "requires": [
+        "mq.basics"
+      ],
+      "questions": [
+        "Какие семантики доставки в Kafka?",
+        {
+          "q": "Как гарантировать порядок доставки?",
+          "a": "Все сообщения нужно записать в одну партицию"
+        },
+        "Патриции и их связь с консьюмерами в Kafka?",
+        "Политики доставки в Kafka?",
+        "Реплики и кластеры в Kafka?",
+        "Различия версий (почему убрали Zookeper) в Kafka?",
+        "Можно ли использовать Kafka без Zookeper?",
+        "Что такое offset в Kafka и зачем он нужен?",
+        "Как работает взаимодействие продюсеров и консюмеров в Kafka?",
+        "Как обеспечивается отказоустойчивость в Kafka?",
+        "Что такое ISR (In-Sync Replicas) в Kafka?",
+        "Как Kafka обеспечивает порядок сообщений?"
+      ],
+      "resources": [
+        {
+          "title": "Kafka Documentation",
+          "url": "https://kafka.apache.org/documentation/"
+        }
+      ]
+    },
+    {
+      "id": "mq.rabbit",
+      "title": "RabbitMQ",
+      "icon": "🐇",
+      "description": "Exchanges, routing, acknowledgements, DLX.",
+      "requires": [
+        "mq.basics"
+      ],
+      "questions": [
+        "Отличия RabbitMQ от Kafka?",
+        "Как настраивается высокая доступность (high availability) и кластеризация RabbitMQ?",
+        "Чем отличается очередь (queue) от топика (topic) в RabbitMQ?",
+        "Типы обменников (exchanges) в RabbitMQ?",
+        "Маршрутизация сообщений в RabbitMQ?",
+        "Гарантии доставки в RabbitMQ?",
+        "dead-letter exchange в RabbitMQ?",
+        "Механизм подтверждения сообщений (acknowledgement) в RabbitMQ?",
+        "Как мониторить производительность в RabbitMQ?"
+      ]
+    },
+    {
+      "id": "mq.redis",
+      "title": "Redis Pub/Sub",
+      "icon": "📡",
+      "description": "Redis как брокер: Pub/Sub, Streams и их ограничения.",
+      "requires": [
+        "mq.basics",
+        "nosql.redis"
+      ],
+      "questions": [
+        "Как Redis используется в роли брокера сообщений?",
+        "Объясните механизм Pub/Sub в Redis и его основные сценарии применения?",
+        "В чем отличия использования Redis Pub/Sub и очередей сообщений RabbitMQ?",
+        "Как реализовать устойчивость и масштабирование Pub/Sub в Redis?",
+        "Какие ограничения есть у Redis при использовании его как message broker?"
+      ]
+    }
+  ]
+}

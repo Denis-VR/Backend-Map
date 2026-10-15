@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "id": "backend",
+  "title": "Backend-разработчик",
+  "description": "Глобальная карта навыков бэкенд-разработчика на Java и Go. Собрана из твоей карты Java Interview.",
+  "center": {
+    "title": "Backend",
+    "icon": "⚔️"
+  },
+  "trees": [
+    "java",
+    "testing",
+    "spring",
+    "data",
+    "messaging",
+    "architecture",
+    "devops",
+    "network",
+    "go",
+    "algorithms"
+  ]
+}
