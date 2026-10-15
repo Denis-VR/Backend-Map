@@ -3,9 +3,10 @@
 
     python3 scripts/xmind_import.py path/to/map.xmind <project-id> ["Project title"]
 
-Level 1 topics become trees (branches), level 2 topics become skills, everything
-deeper becomes self-check questions. The draft has no dependencies between skills:
-open it with Claude (skill "gametree-trees") to add `requires`, icons and descriptions.
+Level 1 topics become trees (branches), level 2 topics become skills, deeper topics
+become self-check questions, grouped into {"topic", "items"} the way they are grouped in
+XMind (the skill's mini map shows them as a mind map). The draft has no dependencies between
+skills: open it with Claude (skill "gametree-trees") to add `requires`, labels and descriptions.
 """
 import json, os, re, sys, zipfile
 
@@ -22,15 +23,23 @@ def text_of(t):
     ks = kids(t)
     return clean(t.get("title")) + (" (" + "; ".join(text_of(c) for c in ks) + ")" if ks else "")
 
-def questions(t, prefix=""):
+def question(t):
+    """A topic with children and no question mark is a group; anything else is one question."""
     title, ks = clean(t.get("title")), kids(t)
     note = clean(t.get("notes", {}).get("plain", {}).get("content", "")) if t.get("notes") else ""
     deep = any(kids(g) for c in ks for g in kids(c))
     if ks and "?" not in title and not deep:
-        return [q for c in ks for q in questions(c, prefix + title + ": ")]
-    q = {"q": prefix + title}
+        return {"topic": title, "items": [question(c) for c in ks]}
     answer = " ".join(x for x in [note, "; ".join(text_of(c) for c in ks)] if x)
-    return [dict(q, a=answer)] if answer else [q["q"]]
+    return {"q": title, "a": answer} if answer else title
+
+def abbr(title):
+    m = re.search(r"\b[A-Z][A-Za-z0-9+#]{1,3}\b", title)
+    if m: return m.group(0)
+    words = re.findall(r"\w+", title)
+    if not words: return "?"
+    if len(words) == 1: return words[0][:1].upper() + words[0][1:3]
+    return "".join(w[0].upper() for w in words[:3])
 
 def main():
     if len(sys.argv) < 3:
@@ -51,12 +60,12 @@ def main():
             nid = f"{tid}.{slug(clean(sub['title']))}"
             while nid in seen: nid += "-2"
             seen.add(nid)
-            qs = [q for c in kids(sub) for q in questions(c)]
-            nodes.append({"id": nid, "title": clean(sub["title"]), "icon": "", "description": "", "questions": qs})
-        tree = {"id": tid, "title": clean(area["title"]), "color": PALETTE[i % len(PALETTE)], "icon": "", "description": "", "nodes": nodes}
+            qs = [question(c) for c in kids(sub)]
+            nodes.append({"id": nid, "title": clean(sub["title"]), "abbr": abbr(clean(sub["title"])), "description": "", "questions": qs})
+        tree = {"id": tid, "title": clean(area["title"]), "color": PALETTE[i % len(PALETTE)], "description": "", "nodes": nodes}
         json.dump(tree, open(os.path.join(out, "trees", tid + ".json"), "w"), ensure_ascii=False, indent=2)
         tree_ids.append(tid); total += len(nodes)
-    project = {"schema": 1, "id": pid, "title": title, "description": "", "center": {"title": title, "icon": "✨"}, "trees": tree_ids}
+    project = {"schema": 1, "id": pid, "title": title, "description": "", "center": {"title": title}, "trees": tree_ids}
     json.dump(project, open(os.path.join(out, "project.json"), "w"), ensure_ascii=False, indent=2)
     print(f"Draft written to data/projects/{pid}: {len(tree_ids)} trees, {total} skills")
 

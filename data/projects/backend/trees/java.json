@@ -2,13 +2,12 @@
   "id": "java",
   "title": "Java",
   "color": "#f0883e",
-  "icon": "☕",
   "description": "Язык, на котором ты уже пишешь. Ядро, коллекции, многопоточность и JVM.",
   "nodes": [
     {
       "id": "java.core",
       "title": "Java Core",
-      "icon": "☕",
+      "abbr": "Core",
       "description": "Синтаксис, типы, equals/hashCode, String pool, static, модификаторы доступа.",
       "keystone": true,
       "questions": [
@@ -36,7 +35,7 @@
     {
       "id": "java.oop",
       "title": "ООП",
-      "icon": "🧩",
+      "abbr": "OOP",
       "description": "Инкапсуляция, наследование, полиморфизм, композиция и агрегация, связность.",
       "requires": [
         "java.core"
@@ -53,7 +52,7 @@
     {
       "id": "java.exceptions",
       "title": "Исключения",
-      "icon": "⚠️",
+      "abbr": "Exc",
       "description": "Иерархия Throwable, checked и unchecked, try-with-resources.",
       "requires": [
         "java.core"
@@ -66,7 +65,7 @@
     {
       "id": "java.classes",
       "title": "Классы и методы",
-      "icon": "📦",
+      "abbr": "Obj",
       "description": "Методы Object, обёртки, Optional, immutable-объекты, потоки ввода-вывода.",
       "requires": [
         "java.oop"
@@ -85,7 +84,7 @@
     {
       "id": "java.collections",
       "title": "Коллекции",
-      "icon": "🗂️",
+      "abbr": "Coll",
       "description": "List, Set, Map, Deque. Как устроены HashMap и TreeMap, сложность операций.",
       "requires": [
         "java.classes"
@@ -113,7 +112,7 @@
     {
       "id": "java.serialization",
       "title": "Сериализация",
-      "icon": "💾",
+      "abbr": "Ser",
       "description": "Serializable, Externalizable, маршалинг и его условия.",
       "requires": [
         "java.classes"
@@ -127,7 +126,7 @@
     {
       "id": "java.generics",
       "title": "Дженерики",
-      "icon": "🔣",
+      "abbr": "<T>",
       "description": "Wildcards, PECS (extends/super), стирание типов.",
       "requires": [
         "java.collections"
@@ -142,7 +141,7 @@
     {
       "id": "java.streams",
       "title": "Stream API",
-      "icon": "🌊",
+      "abbr": "Strm",
       "description": "Промежуточные и терминальные операции, reduce, flatMap, параллельные стримы.",
       "requires": [
         "java.generics"
@@ -162,7 +161,7 @@
     {
       "id": "java.concurrency",
       "title": "Многопоточность",
-      "icon": "🧵",
+      "abbr": "Thrd",
       "description": "Потоки, синхронизация, CAS, атомики, пулы, виртуальные потоки.",
       "requires": [
         "java.collections",
@@ -170,24 +169,44 @@
       ],
       "keystone": true,
       "questions": [
-        "Java Memroy Model (JMM): Что такое JMM?",
-        "Java Memroy Model (JMM): Как применять volatile и когда его использовать?",
-        "Java Memroy Model (JMM): Что такое happens-before?",
-        "Потокобезопасные коллекции: Как устроена BlockingQueue?",
-        "Потокобезопасные коллекции: Какие основные потокобезопасные классы и как их применять?",
-        "Проблемы и их решения: Какие есть проблемы с многопоточностью?",
-        "Проблемы и их решения: Что такое Race Condition?",
-        "Проблемы и их решения: Что такое Dead Locks?",
-        "Проблемы и их решения: Что такое livelock?",
-        "Классы: Расскажите про ForkJoinPool.",
-        "Классы: Как использовать ComparableFuture?",
-        "Классы: Что за механизм Barrier?",
-        "Классы: Что такое услованя переменная (Condition)?",
-        "Классы: Что такое CountDownLatch?",
-        "Классы: Что такое Future и чем отличается от ComparableFuture?",
-        "Классы: Как использовать ExecutorService?",
-        "Классы: Что такое ReentRantLock?",
-        "Классы: Что такое семафоры?",
+        {
+          "topic": "Java Memroy Model (JMM)",
+          "items": [
+            "Что такое JMM?",
+            "Как применять volatile и когда его использовать?",
+            "Что такое happens-before?"
+          ]
+        },
+        {
+          "topic": "Потокобезопасные коллекции",
+          "items": [
+            "Как устроена BlockingQueue?",
+            "Какие основные потокобезопасные классы и как их применять?"
+          ]
+        },
+        {
+          "topic": "Проблемы и их решения",
+          "items": [
+            "Какие есть проблемы с многопоточностью?",
+            "Что такое Race Condition?",
+            "Что такое Dead Locks?",
+            "Что такое livelock?"
+          ]
+        },
+        {
+          "topic": "Классы",
+          "items": [
+            "Расскажите про ForkJoinPool.",
+            "Как использовать ComparableFuture?",
+            "Что за механизм Barrier?",
+            "Что такое услованя переменная (Condition)?",
+            "Что такое CountDownLatch?",
+            "Что такое Future и чем отличается от ComparableFuture?",
+            "Как использовать ExecutorService?",
+            "Что такое ReentRantLock?",
+            "Что такое семафоры?"
+          ]
+        },
         "Какая разница между многопоточностью на основе потоков и на основе процессов?",
         "Как устроены мьютексы?",
         "Что такое потоки-демоны?",
@@ -209,17 +228,22 @@
     {
       "id": "java.jvm",
       "title": "JVM",
-      "icon": "⚙️",
+      "abbr": "JVM",
       "description": "Память JVM, сборщики мусора, classloaders, JIT.",
       "requires": [
         "java.concurrency"
       ],
       "keystone": true,
       "questions": [
-        "Garbage Collector: Какие поколения в сборщике мусора?",
-        "Garbage Collector: Какие разновидности garbage collector?",
-        "Garbage Collector: Какие есть стратегии сборки мусора?",
-        "Garbage Collector: Как задать параметры конфигурации?",
+        {
+          "topic": "Garbage Collector",
+          "items": [
+            "Какие поколения в сборщике мусора?",
+            "Какие разновидности garbage collector?",
+            "Какие есть стратегии сборки мусора?",
+            "Как задать параметры конфигурации?"
+          ]
+        },
         "Как устроена память в jvm?",
         "Что включено JDK и зачем он нужен?",
         "Какие способы оптимизаций JVM?",
@@ -234,7 +258,7 @@
     {
       "id": "java.maven",
       "title": "Maven",
-      "icon": "🏗️",
+      "abbr": "Mvn",
       "description": "Фазы сборки, репозитории, свои стартеры, деплой в Nexus, проверка codestyle.",
       "requires": [
         "java.core"

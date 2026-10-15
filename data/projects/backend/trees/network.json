@@ -2,13 +2,12 @@
   "id": "network",
   "title": "Сети и протоколы",
   "color": "#986ee2",
-  "icon": "🌐",
   "description": "Как сервисы разговаривают друг с другом.",
   "nodes": [
     {
       "id": "net.http",
       "title": "HTTP",
-      "icon": "🌐",
+      "abbr": "HTTP",
       "description": "Методы, статусы, заголовки, HTTPS, путь запроса до контроллера.",
       "keystone": true,
       "questions": [
@@ -34,7 +33,7 @@
     {
       "id": "net.osi",
       "title": "OSI, TCP/IP, TLS",
-      "icon": "📶",
+      "abbr": "TCP",
       "description": "Уровни модели OSI, TCP и UDP, TLS-рукопожатие.",
       "requires": [
         "net.http"
@@ -48,7 +47,7 @@
     {
       "id": "net.rest",
       "title": "REST API",
-      "icon": "🔌",
+      "abbr": "REST",
       "description": "Ресурсы, идемпотентность, версионирование, коды ответов.",
       "requires": [
         "net.http"
@@ -64,7 +63,7 @@
     {
       "id": "net.tomcat",
       "title": "Tomcat и сервлеты",
-      "icon": "🐱",
+      "abbr": "Srvl",
       "description": "Контейнер сервлетов, Jetty, Undertow, настройка в Spring Boot.",
       "requires": [
         "net.http",
@@ -79,7 +78,7 @@
     {
       "id": "net.websockets",
       "title": "WebSockets",
-      "icon": "🔊",
+      "abbr": "WS",
       "description": "Двусторонняя связь, когда её применять.",
       "requires": [
         "net.osi"
@@ -92,7 +91,7 @@
     {
       "id": "net.grpc",
       "title": "gRPC",
-      "icon": "📡",
+      "abbr": "gRPC",
       "description": "Protobuf, HTTP/2, стриминг, общение микросервисов.",
       "requires": [
         "net.rest"
@@ -106,7 +105,7 @@
     {
       "id": "net.graphql",
       "title": "GraphQL",
-      "icon": "◈",
+      "abbr": "GQL",
       "description": "Схема, запросы, резолверы, где применять.",
       "requires": [
         "net.rest"
@@ -119,7 +118,7 @@
     {
       "id": "net.soap",
       "title": "SOAP",
-      "icon": "🧼",
+      "abbr": "SOAP",
       "description": "WSDL, плюсы и минусы, когда ещё встречается.",
       "requires": [
         "net.rest"

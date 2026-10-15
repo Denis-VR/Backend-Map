@@ -2,13 +2,12 @@
   "id": "devops",
   "title": "DevOps и наблюдаемость",
   "color": "#e5534b",
-  "icon": "🚢",
   "description": "Как код попадает в прод и как понять, что с ним происходит.",
   "nodes": [
     {
       "id": "ops.git",
       "title": "Git",
-      "icon": "🌿",
+      "abbr": "Git",
       "description": "Ветки, rebase, cherry-pick, stash, разрешение конфликтов.",
       "keystone": true,
       "questions": [
@@ -26,7 +25,7 @@
     {
       "id": "ops.linux",
       "title": "Linux",
-      "icon": "🐧",
+      "abbr": "Lnx",
       "description": "Командная строка, процессы, права, работа на сервере.",
       "keystone": true,
       "questions": [
@@ -38,7 +37,7 @@
     {
       "id": "ops.docker",
       "title": "Docker",
-      "icon": "🐳",
+      "abbr": "Dkr",
       "description": "Образы, контейнеры, docker-compose, многоэтапная сборка.",
       "requires": [
         "ops.linux"
@@ -56,7 +55,7 @@
     {
       "id": "ops.cicd",
       "title": "CI/CD",
-      "icon": "🔄",
+      "abbr": "CI",
       "description": "Пайплайны сборки, тестов и деплоя.",
       "requires": [
         "ops.git",
@@ -70,7 +69,7 @@
     {
       "id": "ops.k8s",
       "title": "Kubernetes",
-      "icon": "☸️",
+      "abbr": "K8s",
       "description": "Поды, деплойменты, сервисы, ingress, оркестрация.",
       "requires": [
         "ops.docker"
@@ -86,7 +85,7 @@
     {
       "id": "obs.logging",
       "title": "Логи и ELK",
-      "icon": "📜",
+      "abbr": "Log",
       "description": "Logstash, Elasticsearch, Kibana, структурные логи.",
       "requires": [
         "ops.docker"
@@ -113,7 +112,7 @@
     {
       "id": "obs.metrics",
       "title": "Метрики",
-      "icon": "📏",
+      "abbr": "Prom",
       "description": "Prometheus, Micrometer, RED и USE.",
       "requires": [
         "ops.docker"
@@ -140,7 +139,7 @@
     {
       "id": "obs.grafana",
       "title": "Grafana",
-      "icon": "📉",
+      "abbr": "Graf",
       "description": "Дашборды и алерты.",
       "requires": [
         "obs.metrics"
@@ -157,7 +156,7 @@
     {
       "id": "obs.tracing",
       "title": "Трассировка",
-      "icon": "🛰️",
+      "abbr": "Trace",
       "description": "Zipkin, OpenTelemetry, distributed tracing.",
       "requires": [
         "obs.logging",
