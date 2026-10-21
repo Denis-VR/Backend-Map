@@ -1,0 +1,200 @@
+{
+  "id": "ms-patterns",
+  "title": "MS Patterns",
+  "color": "#ff7a1a",
+  "level": 3,
+  "description": "",
+  "nodes": [
+    {
+      "id": "arch.integration",
+      "title": "Integration Patterns",
+      "abbr": "Saga",
+      "level": 3,
+      "description": "Распределённые транзакции, идемпотентность, оркестрация.",
+      "requires": [
+        "arch.ms-patterns",
+        "mq.kafka"
+      ],
+      "questions": [
+        {
+          "q": "Event Sourcing что это?",
+          "level": 1
+        },
+        {
+          "q": "Saga что это?",
+          "level": 1
+        },
+        {
+          "q": "Как устроен Api Gateway?",
+          "level": 2
+        },
+        {
+          "q": "Как настроить Api Gateway в Spring?",
+          "level": 2
+        },
+        {
+          "q": "Message Bus (шина сообщений) что это?",
+          "level": 3
+        }
+      ]
+    },
+    {
+      "id": "ms-patterns.communication-patterns",
+      "title": "Communication Patterns",
+      "abbr": "CP",
+      "level": 3,
+      "description": "",
+      "questions": [
+        {
+          "q": "Service Mesh что это?",
+          "level": 3
+        },
+        {
+          "q": "RPI что это?",
+          "level": 3
+        },
+        {
+          "q": "Messaging Pattenrs что это?",
+          "level": 3
+        }
+      ]
+    },
+    {
+      "id": "arch.security",
+      "title": "Паттерны безопасности",
+      "abbr": "Auth",
+      "level": 3,
+      "description": "Keycloak, OAuth2, OIDC и паттерны безопасности.",
+      "requires": [
+        "arch.microservices"
+      ],
+      "requiresAny": [
+        "spring.security"
+      ],
+      "questions": [
+        {
+          "q": "API Gateway Security что это?",
+          "level": 3
+        },
+        {
+          "q": "Token-Based Authentication что это?",
+          "level": 3
+        },
+        {
+          "q": "mTLS что это?",
+          "level": 3
+        },
+        {
+          "q": "PEP что это?",
+          "level": 3
+        }
+      ]
+    },
+    {
+      "id": "arch.ms-patterns",
+      "title": "Design Patterns",
+      "abbr": "Ptrn",
+      "level": 3,
+      "description": "Декомпозиция, API composition, CQRS, database per service.",
+      "requires": [
+        "arch.microservices"
+      ],
+      "questions": [
+        {
+          "q": "CQRS что это?",
+          "level": 1
+        },
+        {
+          "topic": "Паттерны разбиение на сервисы",
+          "items": [
+            {
+              "q": "Как разделять сервисы по бизнес-функционалу?",
+              "level": 2
+            },
+            {
+              "q": "DDD (Domain-Driven Design) что это?",
+              "level": 2
+            },
+            {
+              "q": "Что такое выделение сервисов под команды разработки?",
+              "level": 2
+            },
+            {
+              "q": "Сервис со своим хранилищем и автономностью что это?",
+              "level": 2
+            },
+            {
+              "q": "Постепенное выделение функционала что это?",
+              "level": 2
+            }
+          ]
+        },
+        {
+          "q": "Event Driving Systems что это?",
+          "level": 3
+        },
+        {
+          "q": "Data Replication что это?",
+          "level": 3
+        },
+        {
+          "q": "Многослойная архитектура (Layered, N-tier) что это?",
+          "level": 3
+        }
+      ]
+    },
+    {
+      "id": "ms-patterns.service-discovery",
+      "title": "Service Discovery",
+      "abbr": "SD",
+      "level": 3,
+      "description": "",
+      "questions": [
+        {
+          "q": "Какие реализации у Service Discovery?",
+          "level": 1
+        },
+        {
+          "q": "Eureka что это?",
+          "level": 1
+        },
+        {
+          "q": "Consul что это?",
+          "level": 3
+        }
+      ]
+    },
+    {
+      "id": "arch.resilience",
+      "title": "Stability Patterns",
+      "abbr": "CB",
+      "level": 1,
+      "description": "Circuit breaker, retry, bulkhead, Resilience4j.",
+      "requires": [
+        "arch.ms-patterns"
+      ],
+      "questions": [
+        {
+          "q": "Circuit Breaker что это?",
+          "level": 1
+        },
+        {
+          "q": "Как разделить сервисы на группы с Bulhead что это?",
+          "level": 1
+        },
+        {
+          "q": "Retry Pattern что это?",
+          "level": 1
+        },
+        {
+          "q": "Fallback Pattern что это?",
+          "level": 1
+        },
+        {
+          "q": "Timeouts что это?",
+          "level": 1
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+name: Bug report
+description: Something in the app does not work as expected
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected and what you saw instead.
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and device
+      placeholder: Chrome 140, macOS / Safari, iPhone
+  - type: textarea
+    id: extra
+    attributes:
+      label: Screenshot or console errors
