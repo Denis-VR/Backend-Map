@@ -1,0 +1,98 @@
+{
+  "id": "testing",
+  "title": "Testing",
+  "color": "#7fd492",
+  "level": 1,
+  "description": "",
+  "nodes": [
+    {
+      "id": "test.mockito",
+      "title": "Mockito",
+      "abbr": "Mock",
+      "level": 1,
+      "description": "Моки, стабы, спаи, верификация вызовов и ограничения Mockito.",
+      "requires": [
+        "test.junit"
+      ],
+      "questions": [
+        {
+          "q": "Какие основные аннотации (Mock, Captor, Spy)?",
+          "level": 1,
+          "important": true
+        },
+        {
+          "q": "Какие виды заглушек в Mockito?",
+          "level": 1
+        },
+        {
+          "q": "Как применять @RunWIth?",
+          "level": 1
+        },
+        {
+          "q": "Что такое стаббинг и верификация вызовов?",
+          "level": 1
+        },
+        {
+          "q": "Какие ограничения в Mockito (статические и final классы)?",
+          "level": 1
+        },
+        {
+          "q": "Что такое PowerMock?",
+          "level": 1
+        }
+      ]
+    },
+    {
+      "id": "test.junit",
+      "title": "JUnit",
+      "abbr": "JU5",
+      "level": 1,
+      "description": "JUnit 5: аннотации, жизненный цикл, параметризованные тесты.",
+      "requires": [
+        "test.basics",
+        "java.oop"
+      ],
+      "questions": [
+        {
+          "q": "Какие различия между версиями JUnit4 и JUnit5?",
+          "level": 1
+        },
+        {
+          "q": "Какие основные аннотации в JUnit?",
+          "level": 1
+        },
+        {
+          "topic": "best-practive",
+          "items": [
+            {
+              "q": "Как измеряется покрытие кода тестами?",
+              "level": 1
+            },
+            {
+              "q": "Что за принцип \"минимизация внешних зависимостей\"?",
+              "level": 1
+            },
+            {
+              "q": "Что такое параметризация тестов?",
+              "level": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "test.basics",
+      "title": "Core",
+      "abbr": "QA",
+      "level": 1,
+      "description": "Пирамида тестов: unit, интеграционные, e2e, нагрузочные.",
+      "questions": [
+        {
+          "q": "Какие есть виды тестирования?",
+          "level": 1,
+          "important": true
+        }
+      ]
+    }
+  ]
+}

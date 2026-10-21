@@ -1,0 +1,11 @@
+{
+  "name": "gametree",
+  "owner": { "name": "Denis-VR" },
+  "plugins": [
+    {
+      "name": "gametree",
+      "source": "./",
+      "description": "Skill для Claude: создаёт и редактирует деревья навыков GameTree."
+    }
+  ]
+}

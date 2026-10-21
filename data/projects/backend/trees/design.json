@@ -1,0 +1,284 @@
+{
+  "id": "design",
+  "title": "Design",
+  "color": "#f2cf3a",
+  "level": 2,
+  "description": "",
+  "nodes": [
+    {
+      "id": "arch.principles",
+      "title": "Core",
+      "abbr": "SOLID",
+      "level": 1,
+      "description": "SOLID, KISS, DRY, виды архитектур, масштабирование.",
+      "requiresAny": [
+        "java.oop"
+      ],
+      "questions": [
+        {
+          "q": "Какие есть виды архитектур?",
+          "level": 2
+        },
+        {
+          "q": "Отличие сервисной архитектуры от микросервисной?",
+          "level": 2
+        },
+        {
+          "q": "Ограничения, преимущества и недостатки микросервисной архитектуры?",
+          "level": 2
+        },
+        {
+          "q": "Что такое Куб Масштабирования?",
+          "level": 2
+        },
+        {
+          "q": "В чем отличие репликации от шарда?",
+          "level": 2
+        },
+        {
+          "q": "Что такое SOLID?",
+          "level": 1,
+          "important": true
+        },
+        {
+          "q": "KISS это?",
+          "level": 1
+        },
+        {
+          "q": "DRY это?",
+          "level": 1
+        }
+      ]
+    },
+    {
+      "id": "arch.clean",
+      "title": "Refactoring",
+      "abbr": "Clean",
+      "level": 1,
+      "description": "Читаемый код, рефакторинг, чистая архитектура.",
+      "requires": [
+        "arch.principles"
+      ],
+      "questions": [
+        {
+          "q": "Какие есть бест-практики по рефакторингу?",
+          "level": 1
+        },
+        {
+          "q": "Что такое чистый код?",
+          "level": 1
+        }
+      ]
+    },
+    {
+      "id": "arch.gof",
+      "title": "Gof Patterns",
+      "abbr": "GoF",
+      "level": 2,
+      "description": "Порождающие, структурные и поведенческие паттерны.",
+      "requires": [
+        "arch.principles"
+      ],
+      "questions": [
+        {
+          "q": "Отличие декоратора от прокси",
+          "level": 1
+        },
+        {
+          "topic": "Пораждающие",
+          "items": [
+            {
+              "q": "Строитель (Builder) это?",
+              "level": 1
+            },
+            {
+              "q": "Фабричный метод (Factory Method) это?",
+              "level": 1
+            },
+            {
+              "q": "Одиночка (Singleton) это?",
+              "level": 1
+            },
+            {
+              "q": "Абстрактная фабрика (Abstract Factory) это?",
+              "level": 2
+            },
+            {
+              "q": "Прототип (Prototype) это?",
+              "level": 2
+            }
+          ]
+        },
+        {
+          "topic": "Структурные",
+          "items": [
+            {
+              "q": "Декоратор (Decorator) это?",
+              "level": 1
+            },
+            {
+              "q": "Адаптер (Adapter) это?",
+              "level": 2
+            },
+            {
+              "q": "Мост (Bridge) это?",
+              "level": 2
+            },
+            {
+              "q": "Компоновщик (Composite) это?",
+              "level": 2
+            },
+            {
+              "q": "Фасад (Facade) это?",
+              "level": 2
+            },
+            {
+              "q": "Приспособленец (Flyweight) это?",
+              "level": 2
+            },
+            {
+              "q": "Заместитель (Proxy) это?",
+              "level": 2,
+              "important": true
+            }
+          ]
+        },
+        {
+          "topic": "Поведенческие",
+          "items": [
+            {
+              "q": "Стратегия (Strategy) это?",
+              "level": 1
+            },
+            {
+              "q": "Цепочка обязанностей (Chain of responsibility) это?",
+              "level": 2
+            },
+            {
+              "q": "Команда (Command) это?",
+              "level": 2
+            },
+            {
+              "q": "Интерпретатор (Interpreter) это?",
+              "level": 2
+            },
+            {
+              "q": "Итератор (Iterator) это?",
+              "level": 2
+            },
+            {
+              "q": "Посредник (Mediator) это?",
+              "level": 2
+            },
+            {
+              "q": "Хранитель (Memento) это?",
+              "level": 2
+            },
+            {
+              "q": "Наблюдатель (Observer) это?",
+              "level": 2
+            },
+            {
+              "q": "Состояние (State) это?",
+              "level": 2
+            },
+            {
+              "q": "Шаблонный метод (Template method) это?",
+              "level": 2
+            },
+            {
+              "q": "Посетитель (Visitor) это?",
+              "level": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "arch.profiling",
+      "title": "Profiling",
+      "abbr": "Prof",
+      "level": 3,
+      "description": "Профайлеры, heap и thread dump, поиск узких мест.",
+      "requiresAny": [
+        "java.jvm"
+      ],
+      "questions": [
+        {
+          "q": "Виды профайлеров и их применимость?",
+          "level": 3
+        },
+        {
+          "q": "Heap Dump что это?",
+          "level": 3
+        },
+        {
+          "q": "Thread Dump что это?",
+          "level": 3
+        },
+        {
+          "q": "Sampling что это?",
+          "level": 3
+        },
+        {
+          "q": "Как профилировать SQL запросы?",
+          "level": 3
+        },
+        {
+          "q": "Troubleshooting что это?",
+          "level": 3
+        },
+        {
+          "q": "Какие проблемы решал с помощью профилирования и как?",
+          "level": 3
+        },
+        {
+          "q": "Bottleneck что это?",
+          "level": 3
+        }
+      ]
+    },
+    {
+      "id": "arch.performance",
+      "title": "Optimization",
+      "abbr": "CAP",
+      "level": 1,
+      "description": "Оценки нагрузки, CAP-теорема, выбор хранилища.",
+      "requires": [
+        "arch.profiling",
+        "db.optimization"
+      ],
+      "questions": [
+        {
+          "q": "Какие есть виды оценок и как их выполнять?",
+          "level": 1
+        },
+        {
+          "q": "Что такое CAP теорема и что выбирать?",
+          "level": 1
+        },
+        {
+          "topic": "Базы Данных",
+          "items": [
+            {
+              "q": "Преимущества и недостатки SQL бд?",
+              "level": 1
+            },
+            {
+              "q": "Преимущества и недостатки NoSQL бд?",
+              "level": 1
+            },
+            {
+              "q": "Зачем нужно индексирование БД?",
+              "level": 1
+            },
+            {
+              "q": "Зачем нужно партиционирование бд?",
+              "level": 1
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

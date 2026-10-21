@@ -1,0 +1,102 @@
+{
+  "id": "spring-microservices",
+  "title": "Spring Microservices",
+  "color": "#f2cf3a",
+  "level": 2,
+  "description": "",
+  "nodes": [
+    {
+      "id": "spring.config",
+      "title": "Spring Config",
+      "abbr": "Cfg",
+      "level": 2,
+      "description": "Централизованная конфигурация сервисов.",
+      "requires": [
+        "spring.cloud"
+      ],
+      "questions": [
+        {
+          "q": "Какие есть репозитории?",
+          "level": 2
+        },
+        {
+          "q": "Как настроить файловую систему?",
+          "level": 2
+        },
+        {
+          "q": "Как динамически обновлять сервисы и какие проблемы?",
+          "level": 2
+        },
+        {
+          "q": "Как устроен?",
+          "level": 2
+        },
+        {
+          "q": "Как интегрировать с Vault?",
+          "level": 2
+        },
+        {
+          "q": "Как интегрировать с Consul?",
+          "level": 2
+        }
+      ]
+    },
+    {
+      "id": "spring.stream",
+      "title": "Spring Stream",
+      "abbr": "Strm",
+      "level": 3,
+      "description": "Событийные сервисы поверх Kafka и RabbitMQ.",
+      "requires": [
+        "spring.cloud",
+        "mq.kafka"
+      ],
+      "questions": [
+        {
+          "q": "Событийно-ориентированная архитектура и ее недостатки",
+          "level": 3
+        },
+        {
+          "q": "Как можно передавать события?",
+          "level": 3
+        },
+        {
+          "q": "Как настроить?",
+          "level": 3
+        },
+        {
+          "q": "Как интегрировать с Redis для распределенного кеширования?",
+          "level": 3
+        }
+      ]
+    },
+    {
+      "id": "spring-microservices.core",
+      "title": "Core",
+      "abbr": "Core",
+      "description": "",
+      "questions": [
+        {
+          "q": "Какие есть компоненты Spring Cloud и как они связаны?",
+          "level": 2
+        }
+      ]
+    },
+    {
+      "id": "spring.cloud",
+      "title": "Общие вопросы",
+      "abbr": "Cloud",
+      "description": "Spring для микросервисов: интеграция с ELK, трассировка, облачные стартеры.",
+      "requires": [
+        "spring.mvc",
+        "arch.microservices"
+      ],
+      "questions": [
+        {
+          "q": "Как интегрировать ELK и Spring Sleuth?",
+          "level": 3
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,165 @@
+{
+  "id": "sql",
+  "title": "SQL",
+  "color": "#7fd492",
+  "level": 1,
+  "description": "",
+  "nodes": [
+    {
+      "id": "db.objects",
+      "title": "Обекты",
+      "abbr": "Obj",
+      "level": 1,
+      "description": "Представления, триггеры, процедуры, последовательности.",
+      "requires": [
+        "db.sql"
+      ],
+      "questions": [
+        {
+          "q": "Что такое курсор в реляционной БД?",
+          "level": 2
+        },
+        {
+          "q": "Что такое хранимые процедуры и как их вызвать?",
+          "level": 2
+        },
+        {
+          "q": "Что такое View и когда применять?",
+          "level": 1
+        },
+        {
+          "q": "Что такое временные таблицы и когда применять?",
+          "level": 1
+        }
+      ]
+    },
+    {
+      "id": "db.optimization",
+      "title": "Оптимизация",
+      "abbr": "Plan",
+      "level": 1,
+      "description": "План запроса, партиционирование, денормализация.",
+      "requires": [
+        "db.indexes"
+      ],
+      "questions": [
+        {
+          "q": "Что такое нормализация бд?",
+          "level": 2
+        },
+        {
+          "q": "Какие есть способы оптимизаций sql запросов?",
+          "level": 1,
+          "important": true
+        },
+        {
+          "q": "Как использовать Explain и измерять скорость запросов?",
+          "level": 1
+        },
+        {
+          "q": "Как сделать пагиниацию данных в sql?",
+          "level": 1
+        }
+      ]
+    },
+    {
+      "id": "db.migrations",
+      "title": "Liquibase",
+      "abbr": "Mig",
+      "level": 1,
+      "description": "Версионирование схемы: Liquibase, Flyway, goose.",
+      "requires": [
+        "db.objects"
+      ],
+      "questions": [
+        {
+          "q": "Как устроен Liquibase и зачем нужен?",
+          "level": 1
+        },
+        {
+          "q": "Как назвать и создать файлы миграции в Liquibase?",
+          "level": 1
+        },
+        {
+          "q": "Как система понимает порядок интеграций в Liquibase?",
+          "level": 1
+        }
+      ]
+    },
+    {
+      "id": "db.indexes",
+      "title": "Индексы",
+      "abbr": "Idx",
+      "level": 1,
+      "description": "B-tree, hash, GIN, составные индексы, EXPLAIN.",
+      "requires": [
+        "db.sql"
+      ],
+      "questions": [
+        {
+          "topic": "Btree",
+          "items": [
+            {
+              "q": "Как устроены Btree индексы?",
+              "level": 1,
+              "important": true
+            },
+            {
+              "q": "Когда применять Btree индексы?",
+              "level": 1
+            }
+          ]
+        },
+        {
+          "topic": "Hash",
+          "items": [
+            {
+              "q": "Как устроены hash индексы?",
+              "level": 1
+            },
+            {
+              "q": "Когда применять hash индексы?",
+              "level": 1
+            }
+          ]
+        },
+        {
+          "q": "Почему плохо создавать индексы на каждый солбец?",
+          "level": 1
+        }
+      ]
+    },
+    {
+      "id": "db.sql",
+      "title": "Core",
+      "abbr": "SQL",
+      "level": 1,
+      "description": "Запросы, JOIN, группировки, нормализация. PostgreSQL как основная СУБД.",
+      "questions": [
+        {
+          "q": "Какие виды Join в SQL?",
+          "level": 1,
+          "important": true
+        },
+        {
+          "q": "Какие есть агрегирующие операторы в SQL",
+          "level": 1
+        },
+        {
+          "q": "Какое отличие Where от Having?",
+          "level": 1
+        },
+        {
+          "q": "Какие есть виды ограничений в бд?",
+          "level": 1
+        }
+      ],
+      "resources": [
+        {
+          "title": "PostgreSQL Docs",
+          "url": "https://www.postgresql.org/docs/current/"
+        }
+      ]
+    }
+  ]
+}
